@@ -58,7 +58,9 @@ export const authOptions: NextAuthOptions = {
     },
     async jwt({ token, user }) {
       if (user) {
-        token.email = user.email;
+        if (user.email) {
+          token.email = user.email;
+        }
         // Always use our MongoDB user _id (not OAuth provider id) so HealthProfile userId is valid ObjectId
         if (user.email) {
           await connectDB();
