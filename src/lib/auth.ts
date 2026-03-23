@@ -64,8 +64,11 @@ export const authOptions: NextAuthOptions = {
         // Always use our MongoDB user _id (not OAuth provider id) so HealthProfile userId is valid ObjectId
         if (user.email) {
           await connectDB();
-          const dbUser = await User.findOne({ email: user.email }).select("_id").lean();
-          if (dbUser) token.id = dbUser._id.toString();
+          const dbUser = await User.findOne({ email: user.email }).select("_id isPremium").lean();
+          if (dbUser) {
+            token.id = dbUser._id.toString();
+            token.isPremium = dbUser.isPremium ?? false;
+          }
         } else if (user.id) token.id = user.id;
       }
       return token;
@@ -74,6 +77,7 @@ export const authOptions: NextAuthOptions = {
       if (session.user) {
         (session.user as { id?: string }).id = token.id as string;
         (session.user as { email?: string }).email = token.email as string;
+        (session.user as { isPremium?: boolean }).isPremium = token.isPremium as boolean;
       }
       return session;
     },

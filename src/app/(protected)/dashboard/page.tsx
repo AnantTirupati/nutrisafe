@@ -1,8 +1,13 @@
 import Link from "next/link";
-import { Scan, History, Heart, User, Bot, Salad } from "lucide-react";
+import { Scan, History, Heart, User, Bot, Salad, Crown, ArrowRight } from "lucide-react";
 import { HealthChatbot } from "@/components/HealthChatbot";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 
-export default function DashboardPage() {
+export default async function DashboardPage() {
+  const session = await getServerSession(authOptions);
+  const isPremium = session?.user?.isPremium;
+
   return (
     <>
       <div>
@@ -49,14 +54,26 @@ export default function DashboardPage() {
           </Link>
           <Link
             href="/diet-plan"
-            className="card flex items-center gap-4 transition-shadow hover:shadow-md"
+            className="group card flex items-center gap-4 transition-shadow hover:shadow-md border-transparent hover:border-violet-200"
           >
-            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-violet-100 text-violet-600">
+            <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-violet-500 to-purple-700 shadow-md shadow-violet-200 text-white group-hover:scale-105 transition-transform">
               <Salad className="h-6 w-6" />
             </div>
-            <div>
-              <h2 className="font-semibold text-slate-900">Diet &amp; Plan</h2>
-              <p className="text-sm text-slate-600">AI-personalised meal &amp; workout</p>
+            <div className="flex-1">
+              <div className="flex items-center gap-2">
+                <h2 className="font-semibold text-slate-900">Diet &amp; Plan</h2>
+                {isPremium ? (
+                  <span className="flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[10px] font-bold tracking-wide text-amber-700 shadow-sm">
+                    <Crown className="h-3 w-3" />
+                    PREMIUM
+                  </span>
+                ) : (
+                  <span className="flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold tracking-wide text-slate-600 transition-colors group-hover:bg-slate-200">
+                    Upgrade <ArrowRight className="h-3 w-3" />
+                  </span>
+                )}
+              </div>
+              <p className="text-sm text-slate-600 mt-0.5">AI-personalised meal &amp; workout</p>
             </div>
           </Link>
           <Link

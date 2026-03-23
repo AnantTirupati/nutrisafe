@@ -8,6 +8,9 @@ export interface IUser {
   image?: string | null;
   passwordHash?: string | null;
   accounts?: { provider: string; providerAccountId: string }[];
+  isPremium?: boolean;
+  premiumSince?: Date | null;
+  premiumOrderId?: string | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -25,6 +28,9 @@ const UserSchema = new Schema<IUser>(
         providerAccountId: String,
       },
     ],
+    isPremium: { type: Boolean, default: false },
+    premiumSince: { type: Date, default: null },
+    premiumOrderId: { type: String, default: null },
   },
   { timestamps: true }
 );

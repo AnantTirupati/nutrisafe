@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { signOut } from "next-auth/react";
-import { Shield, LayoutDashboard, User, Scan, History, Heart, LogOut, Bot, Salad, Bookmark } from "lucide-react";
+import { signOut, useSession } from "next-auth/react";
+import { Shield, LayoutDashboard, User, Scan, History, Heart, LogOut, Bot, Salad, Bookmark, Crown } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const nav = [
@@ -19,6 +19,8 @@ const nav = [
 
 export function DashboardNav() {
   const pathname = usePathname();
+  const { data: session } = useSession();
+  const isPremium = session?.user?.isPremium;
 
   return (
     <header className="sticky top-0 z-10 border-b border-slate-200 bg-white/95 backdrop-blur">
@@ -41,6 +43,9 @@ export function DashboardNav() {
             >
               <Icon className="h-4 w-4" />
               <span className="hidden sm:inline">{label}</span>
+              {href === "/diet-plan" && isPremium && (
+                <Crown className="ml-1 h-4 w-4 text-amber-500" />
+              )}
             </Link>
           ))}
         </nav>

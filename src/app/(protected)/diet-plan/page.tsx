@@ -21,6 +21,7 @@ import {
   CheckCircle2,
 } from "lucide-react";
 import Link from "next/link";
+import { PremiumGate } from "@/components/PremiumGate";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -379,8 +380,9 @@ export default function DietPlanPage() {
         </Link>
       </div>
 
-      {/* Form */}
-      <form onSubmit={handleGenerate} className="space-y-6">
+      <PremiumGate>
+        {/* Form */}
+        <form onSubmit={handleGenerate} className="space-y-6">
         <div className="card">
           <div className="flex items-center gap-2 mb-5">
             <User className="h-4 w-4 text-violet-500" />
@@ -617,6 +619,7 @@ export default function DietPlanPage() {
           ))}
         </div>
       )}
+      </PremiumGate>
     </div>
   );
 }
