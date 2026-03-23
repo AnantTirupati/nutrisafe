@@ -16,7 +16,11 @@ import {
   Lightbulb,
   AlertTriangle,
   User,
+  Save,
+  Bookmark,
+  CheckCircle2,
 } from "lucide-react";
+import Link from "next/link";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -268,6 +272,8 @@ export default function DietPlanPage() {
   const [sections, setSections] = useState<PlanSection[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [generated, setGenerated] = useState(false);
+  const [savingPlan, setSavingPlan] = useState(false);
+  const [savedPlanId, setSavedPlanId] = useState<string | null>(null);
 
   useEffect(() => {
     if (plan) setSections(parseSections(plan));
@@ -314,6 +320,28 @@ export default function DietPlanPage() {
     }
   }
 
+  async function handleSavePlan() {
+    if (!plan) return;
+    const name = window.prompt("Enter a name for this plan:", "My Diet Plan");
+    if (!name) return;
+
+    setSavingPlan(true);
+    try {
+      const res = await fetch("/api/diet-plans", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, content: plan }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to save plan");
+      setSavedPlanId(data.plan._id);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Error saving plan");
+    } finally {
+      setSavingPlan(false);
+    }
+  }
+
   function handleDownload() {
     if (!plan) return;
     const blob = new Blob([plan], { type: "text/plain" });
@@ -328,7 +356,7 @@ export default function DietPlanPage() {
   return (
     <div className="max-w-3xl mx-auto">
       {/* Header */}
-      <div className="mb-8">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
         <div className="flex items-center gap-3">
           <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500 to-purple-700 shadow-md shadow-violet-200">
             <Sparkles className="h-6 w-6 text-white" />
@@ -342,6 +370,13 @@ export default function DietPlanPage() {
             </p>
           </div>
         </div>
+        <Link 
+          href="/my-plans" 
+          className="flex items-center gap-2 text-sm font-medium text-indigo-600 hover:text-indigo-700 bg-indigo-50 hover:bg-indigo-100 px-4 py-2 rounded-xl transition-colors shrink-0"
+        >
+          <Bookmark className="h-4 w-4" />
+          My Saved Plans
+        </Link>
       </div>
 
       {/* Form */}
@@ -535,10 +570,24 @@ export default function DietPlanPage() {
       {sections.length > 0 && !loading && (
         <div className="mt-10 space-y-4">
           {/* Plan header */}
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <h2 className="text-lg font-bold text-slate-900">Your Personalised Plan</h2>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <button
+                type="button"
+                onClick={handleSavePlan}
+                disabled={savingPlan || !!savedPlanId}
+                className={`flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium shadow-sm transition-colors ${
+                  savedPlanId 
+                    ? "border-emerald-200 bg-emerald-50 text-emerald-700" 
+                    : "border-indigo-200 bg-indigo-50 text-indigo-700 hover:bg-indigo-100"
+                }`}
+              >
+                {savingPlan ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : savedPlanId ? <CheckCircle2 className="h-3.5 w-3.5" /> : <Save className="h-3.5 w-3.5" />}
+                {savedPlanId ? "Saved!" : "Save Plan"}
+              </button>
+              <button
+                type="button"
                 onClick={handleDownload}
                 className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50 transition-colors shadow-sm"
                 id="download-plan-btn"
@@ -547,7 +596,8 @@ export default function DietPlanPage() {
                 Download
               </button>
               <button
-                onClick={() => { setPlan(null); setSections([]); setGenerated(false); }}
+                type="button"
+                onClick={() => { setPlan(null); setSections([]); setGenerated(false); setSavedPlanId(null); }}
                 className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50 transition-colors shadow-sm"
                 id="clear-plan-btn"
               >

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
-import { Shield, LayoutDashboard, User, Scan, History, Heart, LogOut, Bot, Salad } from "lucide-react";
+import { Shield, LayoutDashboard, User, Scan, History, Heart, LogOut, Bot, Salad, Bookmark } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const nav = [
@@ -12,6 +12,7 @@ const nav = [
   { href: "/history", label: "Scan history", icon: History },
   { href: "/safe-foods", label: "Safe for me", icon: Heart },
   { href: "/diet-plan", label: "Diet & Plan", icon: Salad },
+  { href: "/my-plans", label: "My Plans", icon: Bookmark },
   { href: "/profile", label: "Profile", icon: User },
   { href: "/dashboard#health-ai", label: "Health AI", icon: Bot },
 ];
