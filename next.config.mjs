@@ -8,7 +8,7 @@ const nextConfig = {
   },
 
   webpack: (config) => {
-    // 🔥 disable filesystem cache to stop missing chunk errors
+    // disable filesystem cache to stop missing chunk errors
     config.cache = false;
     return config;
   },

@@ -73,7 +73,6 @@ export default function DashboardPage() {
           </Link>
         </div>
 
-
         {/* Health AI Chat teaser */}
         <div className="mt-8">
           <div className="rounded-2xl border border-emerald-200 bg-gradient-to-br from-emerald-50 to-teal-50 p-6">
