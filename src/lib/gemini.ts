@@ -1,11 +1,21 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { BedrockRuntimeClient, ConverseCommand, Message, SystemContentBlock } from "@aws-sdk/client-bedrock-runtime";
 
-const apiKey = process.env.GEMINI_API_KEY;
-if (!apiKey) {
-  console.warn("GEMINI_API_KEY not set; AI features will fail.");
+const accessKeyId = process.env.AWS_ACCESS_KEY_ID;
+const secretAccessKey = process.env.AWS_SECRET_ACCESS_KEY;
+const region = process.env.AWS_REGION || "us-east-1";
+
+if (!accessKeyId || !secretAccessKey) {
+  console.warn("AWS Credentials not set; AI features will fail.");
 }
 
-const genAI = apiKey ? new GoogleGenerativeAI(apiKey) : null;
+const bedrockClient = (accessKeyId && secretAccessKey)
+  ? new BedrockRuntimeClient({
+      region,
+      credentials: { accessKeyId, secretAccessKey },
+    })
+  : null;
+
+const MODEL_ID = process.env.BEDROCK_NOVA_PRO_ID || "amazon.nova-pro-v1:0";
 
 export interface ChatMessage {
   role: "user" | "model";
@@ -34,7 +44,6 @@ export interface AnalysisResult {
   riskSummary: string;
   ingredientInsights: IngredientInsight[];
   recommendations: string[];
-  /** 2–4 short search phrases for healthier alternatives to find on marketplaces */
   suggestedProductSearches?: string[];
 }
 
@@ -59,29 +68,57 @@ Respond ONLY with valid JSON in this exact shape (no markdown, no extra text):
   "suggestedProductSearches": ["string", "string", ...]
 }`;
 
-export async function extractTextFromImage(base64Image: string): Promise<string> {
-  if (!genAI) throw new Error("Gemini API not configured");
-  const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+async function callBedrock(messages: Message[], systemPrompts?: SystemContentBlock[]) {
+  if (!bedrockClient) throw new Error("AWS Bedrock API not configured");
+
+  const command = new ConverseCommand({
+    modelId: MODEL_ID,
+    messages,
+    system: systemPrompts,
+  });
+
+  const response = await bedrockClient.send(command);
+  const text = response.output?.message?.content?.[0]?.text;
+  if (!text) throw new Error("No text returned from Bedrock");
+  return text;
+}
+
+function parseImageBase64(base64Image: string) {
   const match = base64Image.match(/^data:(image\/\w+);base64,/);
   const mimeType = (match && match[1]) || "image/jpeg";
-  const imagePart = {
-    inlineData: {
-      data: base64Image.replace(/^data:image\/\w+;base64,/, ""),
-      mimeType,
+  let format = "jpeg";
+  if (mimeType.includes("png")) format = "png";
+  if (mimeType.includes("gif")) format = "gif";
+  if (mimeType.includes("webp")) format = "webp";
+
+  const data = base64Image.replace(/^data:image\/\w+;base64,/, "");
+  const bytes = Buffer.from(data, "base64");
+
+  return { format: format as any, bytes };
+}
+
+export async function extractTextFromImage(base64Image: string): Promise<string> {
+  const image = parseImageBase64(base64Image);
+  const text = await callBedrock([
+    {
+      role: "user",
+      content: [
+        {
+          image: {
+            format: image.format,
+            source: { bytes: image.bytes },
+          },
+        },
+        {
+          text: "Extract all text from this food label image exactly as it appears. Do not translate. Return only the raw text: ingredient list, nutrition facts, product name. Preserve line breaks. If you cannot read it, return 'Unable to read label'.",
+        },
+      ],
     },
-  };
-  const result = await model.generateContent([
-    "Extract all text from this food label image exactly as it appears. Do not translate. Return only the raw text: ingredient list, nutrition facts, product name. Preserve line breaks. If you cannot read it, return 'Unable to read label'.",
-    imagePart,
   ]);
-  const response = result.response;
-  const text = response.text();
   return text?.trim() ?? "Unable to read label";
 }
 
 export async function translateText(text: string): Promise<{ translatedText: string; detectedLanguage: string }> {
-  if (!genAI) throw new Error("Gemini API not configured");
-  const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
   const prompt = `Identify the language of the following text and translate it to English.
   
   Text:
@@ -93,14 +130,15 @@ export async function translateText(text: string): Promise<{ translatedText: str
     "translatedText": "english translation"
   }`;
 
-  const result = await model.generateContent(prompt);
-  const responseText = result.response.text();
+  const responseText = await callBedrock([
+    { role: "user", content: [{ text: prompt }] }
+  ]);
+  
   const cleaned = responseText.replace(/```json?\s*/g, "").replace(/```\s*/g, "").trim();
 
   try {
     return JSON.parse(cleaned);
   } catch {
-    // Fallback if JSON parsing fails
     return { translatedText: text, detectedLanguage: "unknown" };
   }
 }
@@ -110,12 +148,8 @@ export async function analyzeIngredients(
   productName: string,
   profile: UserProfileForAnalysis
 ): Promise<AnalysisResult> {
-  if (!genAI) throw new Error("Gemini API not configured");
-  const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
   const profileStr = JSON.stringify(profile, null, 0);
-  const prompt = `${SYSTEM_PROMPT}
-
-User health profile:
+  const prompt = `User health profile:
 ${profileStr}
 
 Product name: ${productName}
@@ -125,14 +159,17 @@ ${ingredientsText}
 
 Return only the JSON object.`;
 
-  const result = await model.generateContent(prompt);
-  const text = result.response.text();
-  const cleaned = text.replace(/```json?\s*/g, "").replace(/```\s*/g, "").trim();
+  const responseText = await callBedrock(
+    [{ role: "user", content: [{ text: prompt }] }],
+    [{ text: SYSTEM_PROMPT }]
+  );
+
+  const cleaned = responseText.replace(/```json?\s*/g, "").replace(/```\s*/g, "").trim();
   let parsed: AnalysisResult;
   try {
     parsed = JSON.parse(cleaned) as AnalysisResult;
   } catch {
-    throw new Error("AI returned invalid JSON: " + (text?.slice(0, 200) ?? ""));
+    throw new Error("AI returned invalid JSON: " + (responseText?.slice(0, 200) ?? ""));
   }
   if (!parsed.riskLevel || !["low", "medium", "high"].includes(parsed.riskLevel)) {
     parsed.riskLevel = "medium";
@@ -143,15 +180,12 @@ Return only the JSON object.`;
   if (!Array.isArray(parsed.suggestedProductSearches)) parsed.suggestedProductSearches = [];
   return parsed;
 }
+
 export function buildHealthChatbotSystemPrompt(profile: UserProfileForAnalysis): string {
   const age = profile.age ?? "unknown";
   const gender = "Not specified";
-  const conditions =
-    profile.medicalConditions.length > 0
-      ? profile.medicalConditions.join(", ")
-      : "None";
-  const allergies =
-    profile.allergies.length > 0 ? profile.allergies.join(", ") : "None";
+  const conditions = profile.medicalConditions.length > 0 ? profile.medicalConditions.join(", ") : "None";
+  const allergies = profile.allergies.length > 0 ? profile.allergies.join(", ") : "None";
   const diet = profile.dietaryPreference ?? "Non-Vegetarian";
   const notes = profile.additionalNotes ?? "None";
 
@@ -206,40 +240,37 @@ export async function chatWithHealthBot(
   profile: UserProfileForAnalysis,
   imageBase64?: string
 ): Promise<string> {
-  if (!genAI) throw new Error("Gemini API not configured");
-  const model = genAI.getGenerativeModel({
-    model: "gemini-2.5-flash",
-    systemInstruction: buildHealthChatbotSystemPrompt(profile),
+  const messages: Message[] = history.map((m) => {
+    // Both user and model roles exist in Bedrock, map user/assistant
+    const role = m.role === "model" ? "assistant" : "user";
+    return {
+      role,
+      content: [{ text: m.parts[0].text }]
+    };
   });
 
-  const chat = model.startChat({
-    history: history.map((m) => ({ role: m.role, parts: m.parts })),
-  });
-
-  // Build the message content — multimodal if an image was supplied
-  let messageContent: string | (object)[];
+  const userContent: any[] = [];
   if (imageBase64) {
-    const match = imageBase64.match(/^data:(image\/\w+);base64,/);
-    const mimeType = (match && match[1]) || "image/jpeg";
-    const imageData = imageBase64.replace(/^data:image\/\w+;base64,/, "");
-    const userPrompt = message.trim()
-      ? message
-      : "Please analyse this food/meal image. Estimate the calories, nutritional value, and suggest healthier alternatives if applicable.";
-    messageContent = [
-      {
-        inlineData: {
-          data: imageData,
-          mimeType,
-        },
+    const image = parseImageBase64(imageBase64);
+    userContent.push({
+      image: {
+        format: image.format,
+        source: { bytes: image.bytes },
       },
-      { text: userPrompt },
-    ];
+    });
+    userContent.push({
+      text: message.trim() ? message : "Please analyse this food/meal image. Estimate the calories, nutritional value, and suggest healthier alternatives if applicable.",
+    });
   } else {
-    messageContent = message;
+    userContent.push({ text: message });
   }
 
-  const result = await chat.sendMessage(messageContent as Parameters<typeof chat.sendMessage>[0]);
-  return result.response.text();
+  messages.push({
+    role: "user",
+    content: userContent
+  });
+
+  return await callBedrock(messages, [{ text: buildHealthChatbotSystemPrompt(profile) }]);
 }
 
 // ─── Diet & Workout Plan Generator ───────────────────────────────────────────
@@ -247,14 +278,14 @@ export async function chatWithHealthBot(
 export interface DietPlanInput {
   age: number;
   gender: string;
-  height: number;   // cm
-  weight: number;   // kg
-  goal: string;     // weight loss / weight gain / maintenance / muscle gain
-  activityLevel: string; // sedentary / light / moderate / active / very active
+  height: number;
+  weight: number;
+  goal: string;
+  activityLevel: string;
   dietPreference: string;
-  workoutLevel: string; // beginner / intermediate / advanced
+  workoutLevel: string;
   mealsPerDay: number;
-  workoutTime: number;  // minutes available per session
+  workoutTime: number;
   medicalConditions: string[];
   allergies: string[];
   additionalNotes?: string;
@@ -262,15 +293,8 @@ export interface DietPlanInput {
 }
 
 export async function generateDietAndWorkoutPlan(input: DietPlanInput): Promise<string> {
-  if (!genAI) throw new Error("Gemini API not configured");
-  const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
-
-  const conditions = input.medicalConditions.length > 0
-    ? input.medicalConditions.join(", ")
-    : "None";
-  const allergies = input.allergies.length > 0
-    ? input.allergies.join(", ")
-    : "None";
+  const conditions = input.medicalConditions.length > 0 ? input.medicalConditions.join(", ") : "None";
+  const allergies = input.allergies.length > 0 ? input.allergies.join(", ") : "None";
   const notes = input.additionalNotes ?? "None";
   const customReq = input.customRequest?.trim() ?? "";
 
@@ -343,6 +367,5 @@ One line per day showing: workout type + focus area + diet focus.
 
 Format each section clearly. Use bullet points. Keep it practical and motivating.`;
 
-  const result = await model.generateContent(prompt);
-  return result.response.text();
+  return await callBedrock([{ role: "user", content: [{ text: prompt }] }]);
 }

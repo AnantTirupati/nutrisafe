@@ -9,6 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@aws-sdk/client-bedrock-runtime": "^3.1017.0",
     "@google/generative-ai": "^0.21.0",
     "bcryptjs": "^2.4.3",
     "clsx": "^2.1.1",
