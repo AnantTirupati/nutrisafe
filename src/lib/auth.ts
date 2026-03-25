@@ -56,7 +56,11 @@ export const authOptions: NextAuthOptions = {
       }
       return true;
     },
-    async jwt({ token, user }) {
+    async jwt({ token, user, trigger, session }) {
+      if (trigger === "update" && session?.isPremium !== undefined) {
+        token.isPremium = session.isPremium;
+      }
+
       if (user) {
         if (user.email) {
           token.email = user.email;
