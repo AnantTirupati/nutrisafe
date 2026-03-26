@@ -1,41 +1,18 @@
 import mongoose, { Schema, Model } from "mongoose";
+import {
+  MEDICAL_CONDITIONS,
+  ALLERGIES,
+  DIETARY_PREFERENCES,
+  LANGUAGES,
+} from "@/lib/constants";
 
-export const MEDICAL_CONDITIONS = [
-  "Diabetes",
-  "Hypertension",
-  "PCOS",
-  "Heart Disease",
-  "Kidney Disease",
-  "Liver Disease",
-  "Celiac Disease",
-  "IBS",
-  "GERD",
-  "Obesity",
-  "Thyroid",
-  "Other",
-] as const;
-
-export const ALLERGIES = [
-  "Nuts",
-  "Peanuts",
-  "Tree Nuts",
-  "Gluten",
-  "Lactose",
-  "Dairy",
-  "Soy",
-  "Eggs",
-  "Shellfish",
-  "Fish",
-  "Sesame",
-  "Sulfites",
-  "Other",
-] as const;
-
-export const DIETARY_PREFERENCES = ["Vegetarian", "Non-Vegetarian", "Vegan"] as const;
+// Re-export constants
+export { MEDICAL_CONDITIONS, ALLERGIES, DIETARY_PREFERENCES, LANGUAGES };
 
 export type MedicalCondition = (typeof MEDICAL_CONDITIONS)[number];
 export type Allergy = (typeof ALLERGIES)[number];
 export type DietaryPreference = (typeof DIETARY_PREFERENCES)[number];
+export type Language = (typeof LANGUAGES)[number];
 
 export interface IHealthProfile {
   _id: mongoose.Types.ObjectId;
@@ -45,6 +22,7 @@ export interface IHealthProfile {
   medicalConditions: MedicalCondition[];
   allergies: Allergy[];
   dietaryPreference: DietaryPreference;
+  preferredLanguage: Language;
   additionalNotes?: string | null;
   createdAt: Date;
   updatedAt: Date;
@@ -61,6 +39,11 @@ const HealthProfileSchema = new Schema<IHealthProfile>(
       type: String,
       enum: DIETARY_PREFERENCES,
       default: "Non-Vegetarian",
+    },
+    preferredLanguage: {
+      type: String,
+      enum: LANGUAGES,
+      default: "English",
     },
     additionalNotes: { type: String, default: null },
   },

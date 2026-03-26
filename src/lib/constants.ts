@@ -30,3 +30,16 @@ export const ALLERGIES = [
 ] as const;
 
 export const DIETARY_PREFERENCES = ["Vegetarian", "Non-Vegetarian", "Vegan"] as const;
+
+export const LANGUAGES = [
+  "English",
+  "Hindi",
+  "Marathi",
+  "Gujarati",
+  "Tamil",
+  "Telugu",
+  "Kannada",
+  "Malayalam",
+  "Bengali",
+  "Punjabi",
+] as const;

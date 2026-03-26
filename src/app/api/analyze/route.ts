@@ -89,6 +89,7 @@ export async function POST(req: Request) {
       medicalConditions: profileDoc.medicalConditions ?? [],
       allergies: profileDoc.allergies ?? [],
       dietaryPreference: profileDoc.dietaryPreference ?? "Non-Vegetarian",
+      preferredLanguage: profileDoc.preferredLanguage ?? "English",
       additionalNotes: profileDoc.additionalNotes ?? undefined,
     };
 

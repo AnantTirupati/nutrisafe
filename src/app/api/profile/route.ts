@@ -7,9 +7,11 @@ import {
   MEDICAL_CONDITIONS,
   ALLERGIES,
   DIETARY_PREFERENCES,
+  LANGUAGES,
   type MedicalCondition,
   type Allergy,
   type DietaryPreference,
+  type Language,
 } from "@/models/HealthProfile";
 import { z } from "zod";
 
@@ -19,6 +21,7 @@ const UpdateProfileSchema = z.object({
   medicalConditions: z.array(z.enum(MEDICAL_CONDITIONS)).optional(),
   allergies: z.array(z.enum(ALLERGIES)).optional(),
   dietaryPreference: z.enum(DIETARY_PREFERENCES).optional(),
+  preferredLanguage: z.enum(LANGUAGES).optional(),
   additionalNotes: z.string().nullable().optional(),
 });
 
@@ -33,12 +36,13 @@ export async function GET() {
       userId: session.user.id,
     }).lean();
     if (!profile) {
-      // Create default profile for users who don't have one (e.g. existing accounts)
+      // Create default profile for users who don't have one
       const newProfile = await HealthProfile.create({
         userId: session.user.id,
         medicalConditions: [],
         allergies: [],
         dietaryPreference: "Non-Vegetarian",
+        preferredLanguage: "English",
       });
       profile = newProfile.toObject();
     }
@@ -52,6 +56,7 @@ export async function GET() {
         medicalConditions: MEDICAL_CONDITIONS,
         allergies: ALLERGIES,
         dietaryPreferences: DIETARY_PREFERENCES,
+        languages: LANGUAGES,
       },
     });
   } catch (e) {
@@ -89,6 +94,9 @@ export async function PUT(req: Request) {
         ...(parsed.data.dietaryPreference !== undefined && {
           dietaryPreference: parsed.data.dietaryPreference as DietaryPreference,
         }),
+        ...(parsed.data.preferredLanguage !== undefined && {
+          preferredLanguage: parsed.data.preferredLanguage as Language,
+        }),
         ...(parsed.data.additionalNotes !== undefined && {
           additionalNotes: parsed.data.additionalNotes,
         }),
@@ -104,6 +112,7 @@ export async function PUT(req: Request) {
         medicalConditions: (parsed.data.medicalConditions as MedicalCondition[]) ?? [],
         allergies: (parsed.data.allergies as Allergy[]) ?? [],
         dietaryPreference: (parsed.data.dietaryPreference as DietaryPreference) ?? "Non-Vegetarian",
+        preferredLanguage: (parsed.data.preferredLanguage as Language) ?? "English",
         additionalNotes: parsed.data.additionalNotes ?? null,
       });
       profile = newProfile.toObject();

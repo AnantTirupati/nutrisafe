@@ -1,4 +1,5 @@
 import { BedrockRuntimeClient, ConverseCommand, Message, SystemContentBlock } from "@aws-sdk/client-bedrock-runtime";
+import { searchProductOnWeb } from "./search";
 
 const accessKeyId = process.env.AWS_ACCESS_KEY_ID;
 const secretAccessKey = process.env.AWS_SECRET_ACCESS_KEY;
@@ -16,6 +17,7 @@ const bedrockClient = (accessKeyId && secretAccessKey)
   : null;
 
 const MODEL_ID = process.env.BEDROCK_NOVA_PRO_ID || "amazon.nova-pro-v1:0";
+const QWEN_MODEL_ID = process.env.BEDROCK_QWEN_ID || "qwen.qwen3-vl-235b-a22b";
 
 export interface ChatMessage {
   role: "user" | "model";
@@ -27,6 +29,7 @@ export interface UserProfileForAnalysis {
   medicalConditions: string[];
   allergies: string[];
   dietaryPreference: string;
+  preferredLanguage?: string;
   additionalNotes?: string | null;
 }
 
@@ -47,32 +50,39 @@ export interface AnalysisResult {
   suggestedProductSearches?: string[];
 }
 
-const SYSTEM_PROMPT = `You are NutriSafe, a food safety and diet assistant. Your job is to:
-1. Interpret food ingredients in plain language (e.g. "E621 (MSG) – a flavor enhancer that may trigger headaches in sensitive individuals").
-2. For each ingredient, classify as: safe, caution, or harmful given the user's health profile.
-3. Consider: medical conditions (Diabetes, Hypertension, PCOS, Heart Disease, etc.), allergies, and dietary preference (Veg/Non-Veg/Vegan).
-4. Output a single overall risk level: low, medium, or high.
-5. Give a short risk summary and 2-5 actionable recommendations (healthier alternatives, substitutes, diet tips).
-6. Add "suggestedProductSearches": an array of 3-6 SHORT PRODUCT SEARCH PHRASES that users will use to BUY alternatives on Amazon, Flipkart, BigBasket, etc. Each phrase must be something that returns actual buyable products when searched (e.g. "GERD friendly mints", "natural sugar breath mints", "sugar free mints", "ginger candy", "low sodium oats", "whole grain biscuits"). Match these directly to your recommendations: if you recommend "look for GERD-friendly mints" or "natural alternatives", include exact search terms like "GERD friendly mints" and "natural breath mints". Every recommendation that suggests a product type must have at least one corresponding entry in suggestedProductSearches. Use 2-5 words per phrase. No generic advice—only product search terms that lead to purchase links.
+const getSystemPrompt = (language: string = "English") => `You are NutriSafe AI, a friendly and accurate food health assistant. Your goal is to explain food ingredients to everyday people in a way that is easy to understand but still medically accurate for THEIR body.
 
-Respond ONLY with valid JSON in this exact shape (no markdown, no extra text):
+1. LANGUAGE: You MUST provide all text-based fields (riskSummary, explanation, reason, recommendations) in ${language}.
+2. SIMPLE EXPLANATIONS: Explain ingredients like you're talking to a friend. Instead of "increases cardiovascular load," say "it puts a bit too much strain on your heart" (translated to ${language}). Instead of "elevates serum glucose," say "it causes a quick spike in your blood sugar" (translated to ${language}).
+3. PERSONALIZED ADVICE: You MUST connect the risks directly to the user's specific health condition (e.g., Diabetes, Hypertension, PCOS).
+4. WHY IT MATTERS: Explain the "Why" simply. For example: "Since you have Diabetes, this high sugar is like pouring oil on a fire—it makes your body work much harder than it should."
+5. NO JARGON: Avoid technical medical terms. If you must use one, explain it immediately with a simple analogy.
+6. SUMMARY & RECOMMENDATIONS: Provide a clear "Risk Summary" and 2-5 simple, actionable tips.
+7. SHOPPING LIST: Include 3-6 short search terms to help the user BUY healthier alternatives on Amazon/BigBasket.
+
+Respond ONLY with valid JSON in the requested language:
 {
   "productName": "string",
   "ingredients": ["string"],
   "riskLevel": "low"|"medium"|"high",
-  "riskSummary": "string",
+  "riskSummary": "string (A clear, simple explanation in ${language} of how this affects the user's health)",
   "ingredientInsights": [
-    { "name": "string", "category": "safe"|"caution"|"harmful", "explanation": "string", "reason": "string (optional)" }
+    { 
+      "name": "string", 
+      "category": "safe"|"caution"|"harmful", 
+      "explanation": "string (Easy to understand overview in ${language})", 
+      "reason": "string (Why this specifically matters in ${language} for the user's medical conditions)" 
+    }
   ],
-  "recommendations": ["string"],
-  "suggestedProductSearches": ["string", "string", ...]
+  "recommendations": ["string (In ${language})"],
+  "suggestedProductSearches": ["string (In ${language})"]
 }`;
 
-async function callBedrock(messages: Message[], systemPrompts?: SystemContentBlock[]) {
+async function callBedrock(messages: Message[], systemPrompts?: SystemContentBlock[], modelId: string = MODEL_ID) {
   if (!bedrockClient) throw new Error("AWS Bedrock API not configured");
 
   const command = new ConverseCommand({
-    modelId: MODEL_ID,
+    modelId,
     messages,
     system: systemPrompts,
   });
@@ -114,7 +124,7 @@ export async function extractTextFromImage(base64Image: string): Promise<string>
         },
       ],
     },
-  ]);
+  ], undefined, QWEN_MODEL_ID);
   return text?.trim() ?? "Unable to read label";
 }
 
@@ -161,7 +171,7 @@ Return only the JSON object.`;
 
   const responseText = await callBedrock(
     [{ role: "user", content: [{ text: prompt }] }],
-    [{ text: SYSTEM_PROMPT }]
+    [{ text: getSystemPrompt(profile.preferredLanguage) }]
   );
 
   const cleaned = responseText.replace(/```json?\s*/g, "").replace(/```\s*/g, "").trim();
@@ -368,4 +378,38 @@ One line per day showing: workout type + focus area + diet focus.
 Format each section clearly. Use bullet points. Keep it practical and motivating.`;
 
   return await callBedrock([{ role: "user", content: [{ text: prompt }] }]);
+}
+
+export async function identifyProductFromSearch(
+  barcode: string,
+  searchContext: string
+): Promise<Partial<AnalysisResult> & { brand?: string; ingredientsText?: string }> {
+  const prompt = `Research Context for Barcode ${barcode}:
+${searchContext}
+
+Based on the search results above, identify the exact food product for barcode ${barcode}. 
+Extract:
+1. Product Name
+2. Brand Name
+3. Full Ingredient List (if available in snippets, otherwise best guess based on product name)
+
+Return ONLY JSON:
+{
+  "productName": "string",
+  "brand": "string",
+  "ingredients": ["string"],
+  "ingredientsText": "string",
+  "riskLevel": "low"|"medium"|"high"
+}`;
+
+  const responseText = await callBedrock([
+    { role: "user", content: [{ text: prompt }] }
+  ]);
+
+  const cleaned = responseText.replace(/```json?\s*/g, "").replace(/```\s*/g, "").trim();
+  try {
+    return JSON.parse(cleaned);
+  } catch {
+    throw new Error("Failed to parse product identification JSON: " + responseText);
+  }
 }

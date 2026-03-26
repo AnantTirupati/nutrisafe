@@ -14,6 +14,7 @@ type Profile = {
   medicalConditions: string[];
   allergies: string[];
   dietaryPreference: string;
+  preferredLanguage: string;
   additionalNotes?: string | null;
 };
 
@@ -23,6 +24,7 @@ export default function ProfilePage() {
     medicalConditions: readonly string[];
     allergies: readonly string[];
     dietaryPreferences: readonly string[];
+    languages: readonly string[];
   } | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -42,12 +44,14 @@ export default function ProfilePage() {
           medicalConditions: [],
           allergies: [],
           dietaryPreference: "Non-Vegetarian",
+          preferredLanguage: "English",
           additionalNotes: null,
         });
         setOptions({
           medicalConditions: MEDICAL_CONDITIONS,
           allergies: ALLERGIES,
           dietaryPreferences: DIETARY_PREFERENCES,
+          languages: ["English", "Hindi", "Marathi", "Gujarati", "Tamil", "Telugu", "Kannada", "Malayalam", "Bengali", "Punjabi"],
         });
       }
       setLoading(false);
@@ -144,6 +148,25 @@ export default function ProfilePage() {
             </div>
           </div>
         </div>
+
+        <div className="card space-y-4">
+          <h2 className="font-semibold text-slate-900">Analysis Language</h2>
+          <p className="text-sm text-slate-500">Choose your preferred language for the AI health analysis results.</p>
+          <select
+            value={profile.preferredLanguage}
+            onChange={(e) =>
+              setProfile({ ...profile, preferredLanguage: e.target.value })
+            }
+            className="input max-w-xs"
+          >
+            {options.languages.map((l) => (
+              <option key={l} value={l}>
+                {l}
+              </option>
+            ))}
+          </select>
+        </div>
+
         <div className="card space-y-4">
           <h2 className="font-semibold text-slate-900">Medical conditions</h2>
           <div className="flex flex-wrap gap-2">
