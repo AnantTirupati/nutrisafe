@@ -26,6 +26,28 @@ type AnalysisResult = {
   suggestedProductSearches?: string[];
 };
 
+async function compressImage(file: File, maxPx = 1200, quality = 0.8): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const img = new window.Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      let { width, height } = img;
+      if (width > maxPx || height > maxPx) {
+        if (width > height) { height = Math.round((height * maxPx) / width); width = maxPx; }
+        else { width = Math.round((width * maxPx) / height); height = maxPx; }
+      }
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+      canvas.getContext("2d")!.drawImage(img, 0, 0, width, height);
+      resolve(canvas.toDataURL("image/jpeg", quality));
+    };
+    img.onerror = reject;
+    img.src = url;
+  });
+}
+
 export default function ScanPage() {
   const [tab, setTab] = useState<Tab>("barcode");
   const [barcode, setBarcode] = useState("");
@@ -39,7 +61,7 @@ export default function ScanPage() {
   const [showBarcodeScanner, setShowBarcodeScanner] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  function onFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+  async function onFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
     if (!file.type.startsWith("image/")) {
@@ -48,9 +70,14 @@ export default function ScanPage() {
     }
     setImageFile(file);
     setError("");
-    const reader = new FileReader();
-    reader.onload = () => setImagePreview(reader.result as string);
-    reader.readAsDataURL(file);
+    try {
+      const compressed = await compressImage(file);
+      setImagePreview(compressed);
+    } catch {
+      const reader = new FileReader();
+      reader.onload = () => setImagePreview(reader.result as string);
+      reader.readAsDataURL(file);
+    }
   }
 
   async function fetchBarcodeProduct(barcodeValue?: string) {

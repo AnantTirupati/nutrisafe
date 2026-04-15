@@ -7,6 +7,12 @@ const nextConfig = {
     ],
   },
 
+  experimental: {
+    serverActions: {
+      bodySizeLimit: '10mb',
+    },
+  },
+
   webpack: (config) => {
     // disable filesystem cache to stop missing chunk errors
     config.cache = false;

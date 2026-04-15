@@ -12,6 +12,28 @@ import {
   XCircle,
 } from "lucide-react";
 
+async function compressImage(file: File, maxPx = 1200, quality = 0.8): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const img = new window.Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      let { width, height } = img;
+      if (width > maxPx || height > maxPx) {
+        if (width > height) { height = Math.round((height * maxPx) / width); width = maxPx; }
+        else { width = Math.round((width * maxPx) / height); height = maxPx; }
+      }
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+      canvas.getContext("2d")!.drawImage(img, 0, 0, width, height);
+      resolve(canvas.toDataURL("image/jpeg", quality));
+    };
+    img.onerror = reject;
+    img.src = url;
+  });
+}
+
 interface Message {
   id: string;
   role: "user" | "bot";
@@ -138,7 +160,7 @@ export function HealthChatbot() {
       }));
   }
 
-  function handleImageSelect(e: React.ChangeEvent<HTMLInputElement>) {
+  async function handleImageSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -147,12 +169,14 @@ export function HealthChatbot() {
       return;
     }
 
-    const reader = new FileReader();
-    reader.onload = () => {
-      setPendingImage(reader.result as string);
-    };
-    reader.readAsDataURL(file);
-    // Reset file input so same file can be re-selected
+    try {
+      const compressed = await compressImage(file);
+      setPendingImage(compressed);
+    } catch {
+      const reader = new FileReader();
+      reader.onload = () => { setPendingImage(reader.result as string); };
+      reader.readAsDataURL(file);
+    }
     e.target.value = "";
   }
 
@@ -242,7 +266,7 @@ export function HealthChatbot() {
                 NutriSafe Health AI
               </p>
               <p className="text-xs text-emerald-100 mt-0.5">
-                Powered by Gemini · Vision-enabled
+                Powered by NutriSafe AI
               </p>
             </div>
             <div className="flex items-center gap-1">
