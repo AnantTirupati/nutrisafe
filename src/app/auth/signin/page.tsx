@@ -40,7 +40,11 @@ function SignInContent() {
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 px-4">
-      <Link href="/" className="mb-8 flex items-center gap-2 font-semibold text-primary-700">
+      <Link
+        href="/"
+        className="mb-8 flex items-center gap-2 font-extrabold text-primary-700"
+        style={{ fontFamily: "'Outfit', sans-serif" }}
+      >
         <Shield className="h-8 w-8" />
         NutriSafe
       </Link>

@@ -45,7 +45,11 @@ export default function SignUpPage() {
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 px-4">
-      <Link href="/" className="mb-8 flex items-center gap-2 font-semibold text-primary-700">
+      <Link
+        href="/"
+        className="mb-8 flex items-center gap-2 font-extrabold text-primary-700"
+        style={{ fontFamily: "'Outfit', sans-serif" }}
+      >
         <Shield className="h-8 w-8" />
         NutriSafe
       </Link>
@@ -120,6 +124,17 @@ export default function SignUpPage() {
           <Link href="/auth/signin" className="font-medium text-primary-600 hover:underline">
             Sign in
           </Link>
+        </p>
+        <p className="mt-4 text-center text-xs text-slate-400">
+          By creating an account, you agree to our{" "}
+          <Link href="/legal/terms" className="underline hover:text-slate-600">
+            Terms of Service
+          </Link>{" "}
+          and{" "}
+          <Link href="/legal/privacy" className="underline hover:text-slate-600">
+            Privacy Policy
+          </Link>
+          .
         </p>
       </div>
     </div>
