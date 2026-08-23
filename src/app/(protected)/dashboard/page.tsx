@@ -167,7 +167,7 @@ export default async function DashboardPage() {
         )}
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         {/* Result Breakdown */}
         <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm lg:col-span-2 flex flex-col justify-between">
           <div className="flex items-center justify-between">
@@ -245,7 +245,7 @@ export default async function DashboardPage() {
         </div>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         {/* Recent Activity */}
         <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
           <div className="flex items-center justify-between mb-4">
@@ -271,7 +271,7 @@ export default async function DashboardPage() {
                       · {scan.source}
                     </p>
                   </div>
-                  <RiskBadge riskLevel={scan.riskLevel} />
+                  <RiskBadge riskLevel={scan.riskLevel} className="shrink-0 whitespace-nowrap" />
                 </li>
               ))}
             </ul>

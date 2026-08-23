@@ -284,6 +284,26 @@ export default function DietPlanPage() {
     if (plan) setSections(parseSections(plan));
   }, [plan]);
 
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch("/api/profile");
+        if (res.ok) {
+          const data = await res.json();
+          if (data.profile) {
+            setForm((prev) => ({
+              ...prev,
+              height: prev.height || (data.profile.height ? String(data.profile.height) : ""),
+              weight: prev.weight || (data.profile.weight ? String(data.profile.weight) : ""),
+            }));
+          }
+        }
+      } catch (err) {
+        console.error("Failed to fetch profile for pre-filling", err);
+      }
+    })();
+  }, []);
+
   function set(field: keyof FormState, value: string) {
     setForm((prev) => ({ ...prev, [field]: value }));
   }

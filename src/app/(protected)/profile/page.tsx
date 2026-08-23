@@ -11,6 +11,8 @@ import { Loader2, Save } from "lucide-react";
 type Profile = {
   age?: number | null;
   gender?: string | null;
+  height?: number | null;
+  weight?: number | null;
   medicalConditions: string[];
   allergies: string[];
   dietaryPreference: string;
@@ -29,6 +31,8 @@ export default function ProfilePage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ type: "ok" | "err"; text: string } | null>(null);
+  const [customCondition, setCustomCondition] = useState("");
+  const [customAllergy, setCustomAllergy] = useState("");
 
   useEffect(() => {
     (async () => {
@@ -41,6 +45,8 @@ export default function ProfilePage() {
         setProfile({
           age: null,
           gender: null,
+          height: null,
+          weight: null,
           medicalConditions: [],
           allergies: [],
           dietaryPreference: "Non-Vegetarian",
@@ -148,6 +154,40 @@ export default function ProfilePage() {
                 <option value="other">Other</option>
               </select>
             </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700">Height (cm)</label>
+              <input
+                type="number"
+                min={50}
+                max={300}
+                value={profile.height ?? ""}
+                onChange={(e) =>
+                  setProfile({
+                    ...profile,
+                    height: e.target.value ? parseFloat(e.target.value) : null,
+                  })
+                }
+                className="input mt-1"
+                placeholder="Optional"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700">Weight (kg)</label>
+              <input
+                type="number"
+                min={20}
+                max={300}
+                value={profile.weight ?? ""}
+                onChange={(e) =>
+                  setProfile({
+                    ...profile,
+                    weight: e.target.value ? parseFloat(e.target.value) : null,
+                  })
+                }
+                className="input mt-1"
+                placeholder="Optional"
+              />
+            </div>
           </div>
         </div>
 
@@ -188,6 +228,58 @@ export default function ProfilePage() {
                 <span className="text-sm text-slate-700">{c}</span>
               </label>
             ))}
+            {profile.medicalConditions.filter(c => !options.medicalConditions.includes(c)).map(c => (
+              <label key={c} className="inline-flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={true}
+                  onChange={() =>
+                    setProfile({
+                      ...profile,
+                      medicalConditions: profile.medicalConditions.filter((x) => x !== c),
+                    })
+                  }
+                  className="h-4 w-4 rounded border-slate-300 text-primary-600 focus:ring-primary-500"
+                />
+                <span className="text-sm text-slate-700">{c} (Custom)</span>
+              </label>
+            ))}
+          </div>
+          <div className="flex gap-2 items-center">
+            <input
+              type="text"
+              value={customCondition}
+              onChange={(e) => setCustomCondition(e.target.value)}
+              placeholder="Other condition..."
+              className="input max-w-xs text-sm"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && customCondition.trim()) {
+                  e.preventDefault();
+                  if (!profile.medicalConditions.includes(customCondition.trim())) {
+                    setProfile({
+                      ...profile,
+                      medicalConditions: [...profile.medicalConditions, customCondition.trim()]
+                    });
+                  }
+                  setCustomCondition("");
+                }
+              }}
+            />
+            <button
+              type="button"
+              className="px-3 py-1.5 text-sm bg-slate-100 text-slate-700 rounded-md hover:bg-slate-200 transition-colors"
+              onClick={() => {
+                if (customCondition.trim() && !profile.medicalConditions.includes(customCondition.trim())) {
+                  setProfile({
+                    ...profile,
+                    medicalConditions: [...profile.medicalConditions, customCondition.trim()]
+                  });
+                  setCustomCondition("");
+                }
+              }}
+            >
+              Add
+            </button>
           </div>
         </div>
         <div className="card space-y-4">
@@ -209,6 +301,58 @@ export default function ProfilePage() {
                 <span className="text-sm text-slate-700">{a}</span>
               </label>
             ))}
+            {profile.allergies.filter(a => !options.allergies.includes(a)).map(a => (
+              <label key={a} className="inline-flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={true}
+                  onChange={() =>
+                    setProfile({
+                      ...profile,
+                      allergies: profile.allergies.filter((x) => x !== a),
+                    })
+                  }
+                  className="h-4 w-4 rounded border-slate-300 text-primary-600 focus:ring-primary-500"
+                />
+                <span className="text-sm text-slate-700">{a} (Custom)</span>
+              </label>
+            ))}
+          </div>
+          <div className="flex gap-2 items-center">
+            <input
+              type="text"
+              value={customAllergy}
+              onChange={(e) => setCustomAllergy(e.target.value)}
+              placeholder="Other allergy..."
+              className="input max-w-xs text-sm"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && customAllergy.trim()) {
+                  e.preventDefault();
+                  if (!profile.allergies.includes(customAllergy.trim())) {
+                    setProfile({
+                      ...profile,
+                      allergies: [...profile.allergies, customAllergy.trim()]
+                    });
+                  }
+                  setCustomAllergy("");
+                }
+              }}
+            />
+            <button
+              type="button"
+              className="px-3 py-1.5 text-sm bg-slate-100 text-slate-700 rounded-md hover:bg-slate-200 transition-colors"
+              onClick={() => {
+                if (customAllergy.trim() && !profile.allergies.includes(customAllergy.trim())) {
+                  setProfile({
+                    ...profile,
+                    allergies: [...profile.allergies, customAllergy.trim()]
+                  });
+                  setCustomAllergy("");
+                }
+              }}
+            >
+              Add
+            </button>
           </div>
         </div>
         <div className="card space-y-4">

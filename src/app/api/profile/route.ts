@@ -18,8 +18,10 @@ import { z } from "zod";
 const UpdateProfileSchema = z.object({
   age: z.number().int().min(1).max(120).nullable().optional(),
   gender: z.enum(["male", "female", "other"]).nullable().optional(),
-  medicalConditions: z.array(z.enum(MEDICAL_CONDITIONS)).optional(),
-  allergies: z.array(z.enum(ALLERGIES)).optional(),
+  height: z.number().min(50).max(300).nullable().optional(),
+  weight: z.number().min(20).max(300).nullable().optional(),
+  medicalConditions: z.array(z.string()).optional(),
+  allergies: z.array(z.string()).optional(),
   dietaryPreference: z.enum(DIETARY_PREFERENCES).optional(),
   preferredLanguage: z.enum(LANGUAGES).optional(),
   additionalNotes: z.string().nullable().optional(),
@@ -85,11 +87,13 @@ export async function PUT(req: Request) {
       {
         ...(parsed.data.age !== undefined && { age: parsed.data.age }),
         ...(parsed.data.gender !== undefined && { gender: parsed.data.gender }),
+        ...(parsed.data.height !== undefined && { height: parsed.data.height }),
+        ...(parsed.data.weight !== undefined && { weight: parsed.data.weight }),
         ...(parsed.data.medicalConditions !== undefined && {
-          medicalConditions: parsed.data.medicalConditions as MedicalCondition[],
+          medicalConditions: parsed.data.medicalConditions,
         }),
         ...(parsed.data.allergies !== undefined && {
-          allergies: parsed.data.allergies as Allergy[],
+          allergies: parsed.data.allergies,
         }),
         ...(parsed.data.dietaryPreference !== undefined && {
           dietaryPreference: parsed.data.dietaryPreference as DietaryPreference,
@@ -109,8 +113,10 @@ export async function PUT(req: Request) {
         userId: session.user.id,
         age: parsed.data.age ?? null,
         gender: parsed.data.gender ?? null,
-        medicalConditions: (parsed.data.medicalConditions as MedicalCondition[]) ?? [],
-        allergies: (parsed.data.allergies as Allergy[]) ?? [],
+        height: parsed.data.height ?? null,
+        weight: parsed.data.weight ?? null,
+        medicalConditions: parsed.data.medicalConditions ?? [],
+        allergies: parsed.data.allergies ?? [],
         dietaryPreference: (parsed.data.dietaryPreference as DietaryPreference) ?? "Non-Vegetarian",
         preferredLanguage: (parsed.data.preferredLanguage as Language) ?? "English",
         additionalNotes: parsed.data.additionalNotes ?? null,

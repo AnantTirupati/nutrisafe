@@ -19,8 +19,10 @@ export interface IHealthProfile {
   userId: mongoose.Types.ObjectId;
   age?: number | null;
   gender?: "male" | "female" | "other" | null;
-  medicalConditions: MedicalCondition[];
-  allergies: Allergy[];
+  height?: number | null;
+  weight?: number | null;
+  medicalConditions: string[];
+  allergies: string[];
   dietaryPreference: DietaryPreference;
   preferredLanguage: Language;
   additionalNotes?: string | null;
@@ -33,6 +35,8 @@ const HealthProfileSchema = new Schema<IHealthProfile>(
     userId: { type: Schema.Types.ObjectId, ref: "User", required: true, unique: true },
     age: { type: Number, default: null },
     gender: { type: String, enum: ["male", "female", "other"], default: null },
+    height: { type: Number, default: null },
+    weight: { type: Number, default: null },
     medicalConditions: { type: [String], default: [] },
     allergies: { type: [String], default: [] },
     dietaryPreference: {

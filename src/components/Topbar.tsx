@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { Search, Bell, User as UserIcon } from "lucide-react";
 import { useSession } from "next-auth/react";
 
@@ -45,13 +46,17 @@ export function Topbar() {
           <span className="absolute top-0 right-0 h-2 w-2 rounded-full bg-red-500 ring-2 ring-white" />
         </button>
 
-        <div className="flex items-center gap-3 border-l border-slate-200 pl-4 lg:pl-6">
+        <Link
+          href="/profile"
+          className="flex items-center gap-3 border-l border-slate-200 pl-4 lg:pl-6 rounded-full transition-opacity hover:opacity-80"
+          title="View profile"
+        >
           <div className="hidden text-right lg:block">
             <p className="text-sm font-semibold text-slate-900">
               {session?.user?.name || "Guest User"}
             </p>
           </div>
-          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary-100 text-primary-700">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary-100 text-primary-700 ring-2 ring-transparent transition-colors hover:ring-primary-200">
             {session?.user?.image ? (
               <img
                 src={session.user.image}
@@ -62,7 +67,7 @@ export function Topbar() {
               <UserIcon className="h-5 w-5" />
             )}
           </div>
-        </div>
+        </Link>
       </div>
     </header>
   );
