@@ -158,7 +158,23 @@ export function LandingNav() {
                 {link.label}
               </a>
             ))}
-            <div className="flex flex-col mt-2 gap-4 border-t border-white/10 pt-8">
+
+            <div className="flex flex-col gap-4 mt-2">
+              <span className="text-white/60 text-xs font-semibold uppercase tracking-widest" style={{ fontFamily: "'Figtree', sans-serif" }}>Legal</span>
+              {LEGAL_LINKS.map((link) => (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="text-white/80 text-base font-medium hover:text-[#4aa366] transition-colors"
+                  style={{ fontFamily: "'Figtree', sans-serif" }}
+                >
+                  {link.label}
+                </Link>
+              ))}
+            </div>
+
+            <div className="flex flex-col mt-4 gap-4 border-t border-white/10 pt-8">
               <Link
                 href="/auth/signin"
                 onClick={() => setMobileMenuOpen(false)}

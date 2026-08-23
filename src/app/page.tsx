@@ -242,7 +242,7 @@ function HeroSection() {
         </div>
 
         {/* Middle left hero copy */}
-        <div className="absolute left-10 top-[55%] -translate-y-1/2 lg:left-32">
+        <div className="absolute w-full lg:w-auto left-0 lg:left-32 top-[55%] -translate-y-1/2 flex flex-col items-center lg:items-start text-center lg:text-left px-4 lg:px-0">
           <p
             className="leading-tight"
             style={{
@@ -255,7 +255,7 @@ function HeroSection() {
             <span className="text-white">What You Want</span>
           </p>
           <p
-            className="text-white leading-tight ml-24 lg:ml-32"
+            className="text-white leading-tight lg:ml-32 mt-2 lg:mt-0"
             style={{
               fontFamily: "'Outfit', sans-serif",
               fontWeight: 600,
@@ -267,7 +267,7 @@ function HeroSection() {
         </div>
 
         {/* Right hero copy */}
-        <div className="absolute right-10 bottom-7 lg:right-32 flex flex-col items-end text-right">
+        <div className="absolute w-full lg:w-auto right-0 lg:right-32 bottom-7 flex flex-col items-center lg:items-end text-center lg:text-right px-4 lg:px-0">
           <p
             className="leading-tight"
             style={{

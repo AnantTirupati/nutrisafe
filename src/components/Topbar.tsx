@@ -18,7 +18,7 @@ export function Topbar() {
   };
 
   return (
-    <header className="sticky top-0 z-10 flex h-16 items-center justify-between border-b border-slate-200 bg-white px-4 lg:px-8">
+    <header className="static lg:sticky lg:top-0 z-10 flex h-16 items-center justify-between border-b border-slate-200 bg-white px-4 lg:px-8">
       {/* Search Bar */}
       <form onSubmit={handleSearch} className="flex flex-1 max-w-md items-center">
         <div className="relative w-full">

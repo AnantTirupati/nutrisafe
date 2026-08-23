@@ -272,7 +272,7 @@ export function HealthChatbot() {
         <button
           id="health-chatbot-toggle"
           onClick={() => setOpen(true)}
-          className="fixed bottom-6 right-6 z-50 flex items-center gap-2 rounded-full bg-gradient-to-r from-emerald-500 to-teal-600 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-emerald-500/30 transition-all hover:scale-105 hover:shadow-xl hover:shadow-emerald-500/40 focus:outline-none animate-pulse-slow"
+          className="fixed bottom-[40px] right-6 z-50 flex items-center gap-2 rounded-full bg-gradient-to-r from-emerald-500 to-teal-600 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-emerald-500/30 transition-all hover:scale-105 hover:shadow-xl hover:shadow-emerald-500/40 focus:outline-none animate-pulse-slow"
           title="Open Health AI Chat"
         >
           <Bot className="h-5 w-5" />
@@ -284,7 +284,7 @@ export function HealthChatbot() {
       {open && (
         <div
           id="health-chatbot-panel"
-          className="fixed bottom-6 right-6 z-50 flex flex-col w-[390px] max-h-[600px] rounded-2xl border border-slate-200 bg-white shadow-2xl overflow-hidden"
+          className="fixed bottom-[40px] right-6 z-50 flex flex-col w-[390px] max-h-[600px] rounded-2xl border border-slate-200 bg-white shadow-2xl overflow-hidden"
           style={{ animation: "slideUp 0.2s ease-out" }}
         >
           {/* Header */}
