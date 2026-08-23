@@ -218,7 +218,7 @@ function HeroSection() {
         />
 
         {/* Top left hero copy */}
-        <div className="absolute left-10 top-32 lg:left-32">
+        <div className="absolute left-6 top-28 lg:left-32 w-[calc(100%-48px)] lg:w-auto z-10">
           <p
             className="text-[#4aa366] leading-none"
             style={{
@@ -303,16 +303,7 @@ function HeroSection() {
           </p>
         </div>
 
-        {/* Scroll hint */}
-        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 opacity-60">
-          <span
-            className="text-white text-xs uppercase tracking-widest"
-            style={{ fontFamily: "'Figtree', sans-serif" }}
-          >
-            Scroll
-          </span>
-          <div className="w-px h-8 bg-white/50 animate-pulse" />
-        </div>
+
       </div>
     </section>
   );
@@ -402,87 +393,107 @@ function HowItWorksSection() {
 
 // ─── Features Section ─────────────────────────────────────────────────────────
 
-function Interactive3DCard({
-  card,
-  index,
+function FeatureMarquee({
+  cards,
 }: {
-  card: { title: string; desc: string; icon: React.ReactNode; cta: string; image: string };
-  index: number;
+  cards: { title: string; desc: string; icon: React.ReactNode; cta: string; image: string }[];
 }) {
-  const cardRef = useRef<HTMLDivElement>(null);
-  const prefersReduced = useReducedMotion();
-  // Base static tilts (fans out smoothly across 6 cards)
-  const baseRotateY = [
-    -15, -9, -3, 3, 9, 15
-  ][index] || 0;
+  const trackRef = useRef<HTMLDivElement>(null);
+  const [isHovered, setIsHovered] = useState(false);
+  const progressRef = useRef(0);
 
-  const [transform, setTransform] = useState(`rotateY(${baseRotateY}deg) rotateX(0deg) scale3d(1, 1, 1) translateZ(0px)`);
-  const [transition, setTransition] = useState("transform 0.4s cubic-bezier(0.25, 1, 0.5, 1)");
-  const [zIndex, setZIndex] = useState(index);
+  // Triple the cards for smooth infinite scroll
+  const displayCards = [...cards, ...cards, ...cards];
+  const CARD_WIDTH = 280;
+  const GAP = 24;
+  const SET_WIDTH = cards.length * (CARD_WIDTH + GAP);
 
-  const handleMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
-    if (prefersReduced || !cardRef.current) return;
-    const rect = cardRef.current.getBoundingClientRect();
-    const cardWidth = rect.width;
-    const cardHeight = rect.height;
+  useEffect(() => {
+    let animationFrameId: number;
     
-    const midPointX = cardWidth / 2;
-    const midPointY = cardHeight / 2;
-    
-    const cursorX = e.clientX - rect.left;
-    const cursorY = e.clientY - rect.top;
-    
-    const maxAngleY = 15;
-    const maxAngleX = 5;
-    
-    // Y-axis tilt: negative side pushes in based on requested logic
-    const rotateY = (cursorX - midPointX) * (maxAngleY / (cardWidth / 2));
-    
-    // X-axis tilt: top side pushes in if cursor on top
-    const rotateX = (cursorY - midPointY) * (maxAngleX / (cardHeight / 2));
+    const update = () => {
+      if (!isHovered) {
+        progressRef.current -= 1; // Speed
+        if (Math.abs(progressRef.current) >= SET_WIDTH) {
+          progressRef.current = 0; // Reset seamlessly
+        }
+      }
 
-    setTransform(`rotateY(${rotateY}deg) rotateX(${rotateX}deg) scale3d(1.05, 1.05, 1.05) translateZ(50px)`);
-    setTransition("transform 0.1s linear");
-    setZIndex(50);
-  }, [prefersReduced]);
+      if (trackRef.current) {
+        trackRef.current.style.transform = `translate3d(${progressRef.current}px, 0, 0)`;
+        
+        // Calculate scale for each card
+        const windowCenter = window.innerWidth / 2;
+        const cardElements = trackRef.current.children;
+        
+        for (let i = 0; i < cardElements.length; i++) {
+          const card = cardElements[i] as HTMLElement;
+          const rect = card.getBoundingClientRect();
+          const cardCenter = rect.left + rect.width / 2;
+          
+          // Distance from center
+          const dist = Math.abs(windowCenter - cardCenter);
+          const maxDist = window.innerWidth / 1.5; // Wider falloff
+          
+          // Scale logic: 1.05 at center, 0.85 at edges
+          let scale = 1.05 - (dist / maxDist) * 0.2;
+          if (scale < 0.85) scale = 0.85;
+          if (scale > 1.05) scale = 1.05;
+          
+          let opacity = 1 - (dist / maxDist) * 0.4;
+          if (opacity < 0.3) opacity = 0.3;
+          if (opacity > 1) opacity = 1;
 
-  const handleMouseLeave = useCallback(() => {
-    setTransform(`rotateY(${baseRotateY}deg) rotateX(0deg) scale3d(1, 1, 1) translateZ(0px)`);
-    setTransition("transform 0.4s cubic-bezier(0.25, 1, 0.5, 1)");
-    setZIndex(index);
-  }, [baseRotateY, index]);
+          card.style.transform = `scale(${scale})`;
+          card.style.opacity = opacity.toString();
+        }
+      }
+
+      animationFrameId = requestAnimationFrame(update);
+    };
+
+    animationFrameId = requestAnimationFrame(update);
+    return () => cancelAnimationFrame(animationFrameId);
+  }, [isHovered, SET_WIDTH]);
 
   return (
-    <div
-      ref={cardRef}
-      onMouseMove={handleMouseMove}
-      onMouseLeave={handleMouseLeave}
-      className={`relative w-[260px] h-[380px] flex-shrink-0 bg-white rounded-[32px] p-2 flex flex-col justify-between cursor-pointer group shadow-2xl ${
-        index === 0 ? "" : index === 3 ? "ml-5" : "-ml-8 lg:-ml-12"
-      }`}
-      style={{
-        transform,
-        transition,
-        zIndex,
-        transformStyle: "preserve-3d",
-      }}
+    <div 
+      className="relative w-full overflow-hidden py-12" 
+      onMouseEnter={() => setIsHovered(true)} 
+      onMouseLeave={() => setIsHovered(false)}
+      onTouchStart={() => setIsHovered(true)}
+      onTouchEnd={() => setIsHovered(false)}
     >
-      <div className="relative w-full h-[50%] rounded-[24px] overflow-hidden bg-gray-100">
-        <img src={card.image} alt={card.title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
-        <div className="absolute top-4 left-4 size-10 bg-white/80 backdrop-blur-md rounded-full flex items-center justify-center text-[#b75233] shadow-sm">
-          {card.icon}
-        </div>
-      </div>
-      <div className="flex flex-col relative z-10 flex-1 p-6">
-        <h3 className="text-[22px] font-bold text-[#153322] mb-3 leading-tight" style={{ fontFamily: "'Outfit', sans-serif" }}>{card.title}</h3>
-        <p className="text-[15px] text-[#5f6b63] leading-relaxed flex-1" style={{ fontFamily: "'Figtree', sans-serif" }}>{card.desc}</p>
-        <Link
-          href="/auth/signup"
-          className="block w-full py-4 mt-6 rounded-[20px] bg-[#153322] text-white font-bold text-[15px] text-center transition-all group-hover:bg-[#b75233]"
-          style={{ fontFamily: "'Figtree', sans-serif" }}
-        >
-          {card.cta}
-        </Link>
+      <div 
+        ref={trackRef} 
+        className="flex items-center gap-[24px]" 
+        style={{ width: 'max-content', willChange: 'transform' }}
+      >
+        {displayCards.map((card, i) => (
+          <div 
+            key={i} 
+            className="relative w-[280px] h-[400px] flex-shrink-0 bg-white rounded-[32px] p-2 flex flex-col justify-between cursor-pointer shadow-xl transition-all duration-300"
+            style={{ willChange: 'transform, opacity' }}
+          >
+            <div className="relative w-full h-[45%] rounded-[24px] overflow-hidden bg-slate-100">
+              <img src={card.image} alt={card.title} className="w-full h-full object-cover transition-transform duration-500 hover:scale-110" />
+              <div className="absolute top-3 left-3 size-10 bg-white/90 backdrop-blur-md rounded-full flex items-center justify-center shadow-sm text-[#153322]">
+                {card.icon}
+              </div>
+            </div>
+            <div className="flex flex-col relative z-10 flex-1 p-5">
+              <h3 className="text-[20px] font-bold text-[#153322] mb-2 leading-tight" style={{ fontFamily: "'Outfit', sans-serif" }}>{card.title}</h3>
+              <p className="text-[14px] text-[#5f6b63] leading-relaxed flex-1" style={{ fontFamily: "'Figtree', sans-serif" }}>{card.desc}</p>
+              <Link
+                href="/auth/signup"
+                className="block w-full py-3 mt-4 rounded-[16px] bg-[#153322] text-white font-bold text-[14px] text-center transition-all hover:bg-[#b75233]"
+                style={{ fontFamily: "'Figtree', sans-serif" }}
+              >
+                {card.cta}
+              </Link>
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   );
@@ -519,16 +530,9 @@ function FeaturesSection() {
         </h2>
       </div>
       
-      {/* Bottom: Fanned Cards */}
-      <div 
-        className="w-full flex-1 flex items-end justify-center pb-12 lg:pb-20 relative z-10"
-        style={{ perspective: "1500px", transformStyle: "preserve-3d" }}
-      >
-        <div className="flex items-center justify-center w-full" style={{ transformStyle: "preserve-3d" }}>
-          {cards.map((card, i) => (
-            <Interactive3DCard key={i} card={card} index={i} />
-          ))}
-        </div>
+      {/* Bottom: Marquee Cards */}
+      <div className="w-full flex-1 flex flex-col items-center justify-center pb-12 lg:pb-20 relative z-10 mt-8">
+        <FeatureMarquee cards={cards} />
       </div>
     </section>
   );

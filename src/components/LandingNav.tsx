@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
+import { Menu, X } from "lucide-react";
 
 export function IconChevronRight({ color = "white" }: { color?: string }) {
   return (
@@ -26,6 +27,7 @@ export function LandingNav() {
   ];
   const [hidden, setHidden] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const lastScrollY = useRef(0);
 
   useEffect(() => {
@@ -49,7 +51,7 @@ export function LandingNav() {
 
   return (
     <nav
-      className={`fixed top-0 w-full grid grid-cols-[1fr_auto_1fr] items-center px-10 lg:px-20 h-[95px] z-[100] transition-all duration-300 ${
+      className={`fixed top-0 w-full flex justify-between lg:grid lg:grid-cols-[1fr_auto_1fr] items-center px-6 lg:px-20 h-[95px] z-[100] transition-all duration-300 ${
         hidden ? "-translate-y-full" : "translate-y-0"
       }`}
       style={{
@@ -110,8 +112,20 @@ export function LandingNav() {
         </div>
       </div>
 
-      {/* CTA */}
-      <div className="flex items-center gap-3 justify-self-end">
+      {/* Mobile Menu Toggle */}
+      <div className="flex items-center justify-self-end lg:hidden">
+        <button
+          type="button"
+          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+          className="text-white p-2"
+          aria-label="Toggle menu"
+        >
+          {mobileMenuOpen ? <X className="h-7 w-7" /> : <Menu className="h-7 w-7" />}
+        </button>
+      </div>
+
+      {/* CTA Desktop */}
+      <div className="hidden lg:flex items-center gap-3 justify-self-end">
         <Link
           href="/auth/signin"
           className="px-7 py-4 text-white text-base font-semibold rounded-full hover:bg-white/10 transition-colors cursor-pointer"
@@ -121,13 +135,51 @@ export function LandingNav() {
         </Link>
         <Link
           href="/auth/signup"
-          className="flex items-center gap-2 px-7 py-4 rounded-full bg-[#153322] text-white text-base font-bold hover:bg-[#1e4630] transition-colors cursor-pointer"
+          className="flex items-center gap-2 px-7 py-4 rounded-full bg-[#153322] text-white text-base font-bold hover:bg-[#1e4630] transition-colors cursor-pointer border border-white/20"
           style={{ fontFamily: "'Figtree', sans-serif" }}
         >
           Check My Foods
           <IconChevronRight />
         </Link>
       </div>
+
+      {/* Mobile Menu Dropdown */}
+      {mobileMenuOpen && (
+        <div className="absolute top-[95px] left-0 w-full bg-[#153322] flex flex-col p-6 shadow-xl lg:hidden border-t border-white/10">
+          <div className="flex flex-col gap-6">
+            {navLinks.map((link) => (
+              <a
+                key={link.href}
+                href={link.href}
+                onClick={() => setMobileMenuOpen(false)}
+                className="text-white text-lg font-semibold hover:text-[#4aa366] transition-colors"
+                style={{ fontFamily: "'Figtree', sans-serif" }}
+              >
+                {link.label}
+              </a>
+            ))}
+            <div className="flex flex-col mt-2 gap-4 border-t border-white/10 pt-8">
+              <Link
+                href="/auth/signin"
+                onClick={() => setMobileMenuOpen(false)}
+                className="w-full py-4 text-center text-white text-base font-semibold rounded-full border border-white/20 hover:bg-white/10 transition-colors"
+                style={{ fontFamily: "'Figtree', sans-serif" }}
+              >
+                Sign In
+              </Link>
+              <Link
+                href="/auth/signup"
+                onClick={() => setMobileMenuOpen(false)}
+                className="w-full flex items-center justify-center gap-2 py-4 rounded-full bg-[#4aa366] text-[#153322] text-base font-bold hover:bg-[#3d8c56] transition-colors"
+                style={{ fontFamily: "'Figtree', sans-serif" }}
+              >
+                Check My Foods
+                <IconChevronRight color="#153322" />
+              </Link>
+            </div>
+          </div>
+        </div>
+      )}
     </nav>
   );
 }
