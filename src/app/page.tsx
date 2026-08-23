@@ -1,100 +1,994 @@
+"use client";
+
+import { useState, useRef, useCallback, useEffect } from "react";
 import Link from "next/link";
-import { Shield, Scan, Heart, Sparkles } from "lucide-react";
+import svgPaths from "../imports/svg-qhd1v7nqm0";
+import { LandingNav } from "@/components/LandingNav";
 
-export default function HomePage() {
+const CTA_BG =
+  "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=1440&h=600&fit=crop&auto=format";
+const FOOD_IMG =
+  "https://images.unsplash.com/photo-1547592180-85f173990554?w=480&h=400&fit=crop&auto=format";
+
+// ─── Utilities ────────────────────────────────────────────────────────────────
+
+function useReducedMotion() {
+  const [reduced, setReduced] = useState(() =>
+    typeof window !== "undefined"
+      ? window.matchMedia("(prefers-reduced-motion: reduce)").matches
+      : false
+  );
+  useEffect(() => {
+    const mql = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const handler = (e: MediaQueryListEvent) => setReduced(e.matches);
+    mql.addEventListener("change", handler);
+    return () => mql.removeEventListener("change", handler);
+  }, []);
+  return reduced;
+}
+
+// ─── 3D Tilt Card ─────────────────────────────────────────────────────────────
+
+function TiltCard({
+  children,
+  className = "",
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
+  const cardRef = useRef<HTMLDivElement>(null);
+  const prefersReduced = useReducedMotion();
+  const [cardStyle, setCardStyle] = useState<React.CSSProperties>({
+    transform:
+      "perspective(1000px) rotateX(0deg) rotateY(0deg) scale3d(1,1,1)",
+    transition: "transform 0.2s cubic-bezier(0.25, 1, 0.5, 1)",
+  });
+  const [glare, setGlare] = useState({ x: 50, y: 50, opacity: 0 });
+
+  const handleMouseMove = useCallback(
+    (e: React.MouseEvent<HTMLDivElement>) => {
+      if (prefersReduced || !cardRef.current) return;
+      const rect = cardRef.current.getBoundingClientRect();
+      const x = (e.clientX - rect.left) / rect.width;
+      const y = (e.clientY - rect.top) / rect.height;
+      const rotateX = (0.5 - y) * 12;
+      const rotateY = (x - 0.5) * 12;
+      setCardStyle({
+        transform: `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale3d(1.02,1.02,1.02)`,
+        transition: "transform 0.06s linear",
+      });
+      setGlare({ x: x * 100, y: y * 100, opacity: 0.18 });
+    },
+    [prefersReduced]
+  );
+
+  const handleMouseLeave = useCallback(() => {
+    setCardStyle({
+      transform:
+        "perspective(1000px) rotateX(0deg) rotateY(0deg) scale3d(1,1,1)",
+      transition: "transform 0.2s cubic-bezier(0.25, 1, 0.5, 1)",
+    });
+    setGlare((g) => ({ ...g, opacity: 0 }));
+  }, []);
+
   return (
-    <div className="min-h-screen flex flex-col">
-      <header className="border-b border-slate-200 bg-white/80 backdrop-blur">
-        <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4">
-          <Link href="/" className="flex items-center gap-2 font-semibold text-primary-700">
-            <Shield className="h-8 w-8" />
-            NutriSafe
-          </Link>
-          <nav className="flex items-center gap-4">
-            <Link
-              href="/auth/signin"
-              className="text-slate-600 hover:text-slate-900 font-medium"
-            >
-              Sign in
-            </Link>
-            <Link href="/auth/signup" className="btn-primary">
-              Get started
-            </Link>
-          </nav>
-        </div>
-      </header>
+    <div style={{ transformStyle: "preserve-3d" }} className={`flex-1 min-w-0 ${className}`}>
+      <div
+        ref={cardRef}
+        style={cardStyle}
+        onMouseMove={handleMouseMove}
+        onMouseLeave={handleMouseLeave}
+        className="relative h-full"
+      >
+        {children}
+        <div
+          aria-hidden
+          className="absolute inset-0 rounded-[24px] pointer-events-none overflow-hidden"
+          style={{
+            background: `radial-gradient(ellipse at ${glare.x}% ${glare.y}%, rgba(255,255,255,${glare.opacity}) 0%, transparent 65%)`,
+            transition:
+              "background 0.2s cubic-bezier(0.25, 1, 0.5, 1), opacity 0.2s",
+          }}
+        />
+      </div>
+    </div>
+  );
+}
 
-      <main className="flex-1">
-        <section className="mx-auto max-w-6xl px-4 py-20 text-center">
-          <h1 className="text-4xl font-bold tracking-tight text-slate-900 sm:text-5xl md:text-6xl">
-            Safer food choices,{" "}
-            <span className="text-primary-600">personalized for you</span>
-          </h1>
-          <p className="mx-auto mt-6 max-w-2xl text-lg text-slate-600">
-            NutriSafe analyzes packaged food ingredients against your health conditions and
-            allergies. Scan barcodes, upload labels, or type ingredients—get instant risk
-            levels and simple, actionable insights.
+// ─── SVG Icons ────────────────────────────────────────────────────────────────
+
+function IconWrapper({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="bg-[#edf2ee] flex items-center justify-center rounded-[28px] size-14 shrink-0">
+      {children}
+    </div>
+  );
+}
+
+function IconUserPlus({ color = "#153322" }: { color?: string }) {
+  return (
+    <svg fill="none" viewBox="0 0 24 24" width="24" height="24">
+      <path d={svgPaths.p1dc7d800} stroke={color} strokeLinecap="round" strokeWidth="2" />
+    </svg>
+  );
+}
+function IconSearch({ color = "#153322" }: { color?: string }) {
+  return (
+    <svg fill="none" viewBox="0 0 24 24" width="24" height="24">
+      <path d={svgPaths.p1cfabb40} stroke={color} strokeLinecap="round" strokeWidth="2" />
+    </svg>
+  );
+}
+function IconGift({ color = "#153322" }: { color?: string }) {
+  return (
+    <svg fill="none" viewBox="0 0 24 24" width="24" height="24">
+      <path d={svgPaths.p12e12c00} stroke={color} strokeLinecap="round" strokeWidth="2" />
+    </svg>
+  );
+}
+function IconCircleCheck({ color = "#4AA366" }: { color?: string }) {
+  return (
+    <svg fill="none" viewBox="0 0 18 18" width="18" height="18" className="shrink-0">
+      <clipPath id="cc">
+        <rect fill="white" height="18" width="18" />
+      </clipPath>
+      <g clipPath="url(#cc)">
+        <path d={svgPaths.p1e29ca40} stroke={color} strokeLinecap="round" strokeWidth="2" />
+      </g>
+    </svg>
+  );
+}
+function IconCircleX({ color = "#153322" }: { color?: string }) {
+  return (
+    <svg fill="none" viewBox="0 0 20 20" width="20" height="20">
+      <clipPath id="cx">
+        <rect fill="white" height="20" width="20" />
+      </clipPath>
+      <g clipPath="url(#cx)">
+        <path d={svgPaths.p30a06080} stroke={color} strokeLinecap="round" strokeWidth="2" />
+      </g>
+    </svg>
+  );
+}
+function IconChevronRight({ color = "white" }: { color?: string }) {
+  return (
+    <svg fill="none" viewBox="0 0 16 16" width="16" height="16">
+      <path d="M6 12L10 8L6 4" stroke={color} strokeLinecap="round" strokeWidth="2" />
+    </svg>
+  );
+}
+
+// ─── Shared Components ────────────────────────────────────────────────────────
+
+function PrimaryBtn({
+  label,
+  onClick,
+}: {
+  label: string;
+  onClick?: () => void;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className="flex items-center gap-2 px-7 py-4 rounded-full bg-[#153322] text-white text-base font-bold hover:bg-[#1e4630] transition-colors cursor-pointer"
+      style={{ fontFamily: "'Figtree', sans-serif" }}
+    >
+      {label}
+      <IconChevronRight />
+    </button>
+  );
+}
+
+function GhostBtn({ label, dark = false }: { label: string; dark?: boolean }) {
+  return (
+    <button
+      className="flex items-center px-7 py-4 rounded-full border text-base font-semibold transition-colors cursor-pointer"
+      style={{
+        fontFamily: "'Figtree', sans-serif",
+        borderColor: dark ? "#ccd8d1" : "#ccd8d1",
+        color: dark ? "#f5faf2" : "#153322",
+        background: "transparent",
+      }}
+    >
+      {label}
+    </button>
+  );
+}
+
+
+
+// ─── Hero Section (Sticky Curtain) ────────────────────────────────────────────
+
+function HeroSection() {
+  return (
+    <section
+      className="sticky top-0 min-h-screen overflow-hidden bg-[#153322]"
+      style={{ zIndex: 10 }}
+    >
+      {/* Hero content area */}
+      <div className="relative w-full h-screen" style={{ minHeight: "720px" }}>
+        {/* Background video */}
+        <video
+          src="/features/untitled_video.mp4"
+          autoPlay
+          loop
+          muted
+          playsInline
+          className="absolute inset-0 w-full h-full object-cover object-center"
+        />
+
+        {/* Top left hero copy */}
+        <div className="absolute left-10 top-32 lg:left-32">
+          <p
+            className="text-[#4aa366] leading-none"
+            style={{
+              fontFamily: "'Outfit', sans-serif",
+              fontWeight: 800,
+              fontSize: "clamp(64px, 7vw, 112px)",
+            }}
+          >
+            Nutri
           </p>
-          <div className="mt-10 flex flex-wrap items-center justify-center gap-4">
-            <Link href="/auth/signup" className="btn-primary text-base px-6 py-3">
-              Create free account
+          <p
+            className="text-white leading-none -mt-4 ml-16 lg:ml-28"
+            style={{
+              fontFamily: "'Outfit', sans-serif",
+              fontWeight: 400,
+              fontSize: "clamp(64px, 7vw, 112px)",
+            }}
+          >
+            Safe
+          </p>
+        </div>
+
+        {/* Middle left hero copy */}
+        <div className="absolute left-10 top-[55%] -translate-y-1/2 lg:left-32">
+          <p
+            className="leading-tight"
+            style={{
+              fontFamily: "'Outfit', sans-serif",
+              fontWeight: 400,
+              fontSize: "clamp(36px, 4.5vw, 56px)",
+            }}
+          >
+            <span className="text-[#4aa366]">Eat</span>{" "}
+            <span className="text-white">What You Want</span>
+          </p>
+          <p
+            className="text-white leading-tight ml-24 lg:ml-32"
+            style={{
+              fontFamily: "'Outfit', sans-serif",
+              fontWeight: 600,
+              fontSize: "clamp(36px, 4.5vw, 56px)",
+            }}
+          >
+            Just, Safe
+          </p>
+        </div>
+
+        {/* Right hero copy */}
+        <div className="absolute right-10 bottom-7 lg:right-32 flex flex-col items-end text-right">
+          <p
+            className="leading-tight"
+            style={{
+              fontFamily: "'Outfit', sans-serif",
+              fontWeight: 700,
+              fontSize: "clamp(32px, 4vw, 56px)",
+            }}
+          >
+            <span className="text-white">Your </span>
+            <span className="text-[#4aa366]">healthy</span>
+          </p>
+          <p
+            className="text-white leading-tight mt-1"
+            style={{
+              fontFamily: "'Outfit', sans-serif",
+              fontWeight: 700,
+              fontSize: "clamp(32px, 4vw, 56px)",
+            }}
+          >
+            alternative
+          </p>
+          <p
+            className="mt-4"
+            style={{
+              fontFamily: "'Outfit', sans-serif",
+              fontWeight: 400,
+              fontSize: "clamp(28px, 3vw, 44px)",
+            }}
+          >
+            <span className="text-white">A </span>
+            <span className="text-[#4aa366]">pocket</span>
+            <span className="text-white"> advisor</span>
+          </p>
+        </div>
+
+        {/* Scroll hint */}
+        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 opacity-60">
+          <span
+            className="text-white text-xs uppercase tracking-widest"
+            style={{ fontFamily: "'Figtree', sans-serif" }}
+          >
+            Scroll
+          </span>
+          <div className="w-px h-8 bg-white/50 animate-pulse" />
+        </div>
+      </div>
+    </section>
+  );
+}
+
+// ─── How It Works ─────────────────────────────────────────────────────────────
+
+const HOW_IT_WORKS = [
+  {
+    icon: <IconUserPlus />,
+    step: "01",
+    title: "Build Health Profile",
+    desc: "Securely add your conditions, allergies, and diet preferences to get personalized analysis.",
+  },
+  {
+    icon: <IconSearch />,
+    step: "02",
+    title: "Scan or Type",
+    desc: "Barcode scan, upload a label photo for OCR, or use manual input to fetch ingredients.",
+  },
+  {
+    icon: <IconGift />,
+    step: "03",
+    title: "Instant Verdict",
+    desc: "Get a clear Good Fit, Use Caution, or Not Recommended verdict with plain-language AI explanations per ingredient.",
+  },
+  {
+    icon: <IconCircleCheck color="#153322" />,
+    step: "04",
+    title: "Safe Alternatives",
+    desc: "Discover low-risk foods and build a custom list of safe choices tailored to you.",
+  },
+];
+
+function HowItWorksSection() {
+  return (
+    <section id="how-it-works" className="relative bg-white scroll-mt-24" style={{ zIndex: 20 }}>
+      {/* Section header */}
+      <div className="border-t border-b border-[#e4ece6] py-10 flex justify-center">
+        <h2
+          className="text-4xl lg:text-[48px] text-black uppercase"
+          style={{
+            fontFamily: "'Outfit', sans-serif",
+            fontWeight: 800,
+          }}
+        >
+          How It Works
+        </h2>
+      </div>
+
+      {/* Step cards */}
+      <div className="px-10 py-16 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 max-w-[1360px] mx-auto">
+        {HOW_IT_WORKS.map((item) => (
+          <div
+            key={item.step}
+            className="relative flex flex-col gap-6 p-10 rounded-[24px] bg-[#e1f2e7] border border-[#e4ece6]"
+          >
+            <div className="flex items-center justify-between">
+              <IconWrapper>{item.icon}</IconWrapper>
+              <span
+                className="text-[32px] text-[#99bfa6]"
+                style={{ fontFamily: "'Outfit', sans-serif", fontWeight: 800 }}
+              >
+                {item.step}
+              </span>
+            </div>
+            <div className="flex flex-col gap-3">
+              <p
+                className="text-[#153322] text-xl"
+                style={{ fontFamily: "'Outfit', sans-serif", fontWeight: 700 }}
+              >
+                {item.title}
+              </p>
+              <p
+                className="text-[#5f6b63] text-[15px] leading-6"
+                style={{ fontFamily: "'Figtree', sans-serif", fontWeight: 400 }}
+              >
+                {item.desc}
+              </p>
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+// ─── Features Section ─────────────────────────────────────────────────────────
+
+function Interactive3DCard({
+  card,
+  index,
+}: {
+  card: { title: string; desc: string; icon: React.ReactNode; cta: string; image: string };
+  index: number;
+}) {
+  const cardRef = useRef<HTMLDivElement>(null);
+  const prefersReduced = useReducedMotion();
+  // Base static tilts (fans out smoothly across 6 cards)
+  const baseRotateY = [
+    -15, -9, -3, 3, 9, 15
+  ][index] || 0;
+
+  const [transform, setTransform] = useState(`rotateY(${baseRotateY}deg) rotateX(0deg) scale3d(1, 1, 1) translateZ(0px)`);
+  const [transition, setTransition] = useState("transform 0.4s cubic-bezier(0.25, 1, 0.5, 1)");
+  const [zIndex, setZIndex] = useState(index);
+
+  const handleMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    if (prefersReduced || !cardRef.current) return;
+    const rect = cardRef.current.getBoundingClientRect();
+    const cardWidth = rect.width;
+    const cardHeight = rect.height;
+    
+    const midPointX = cardWidth / 2;
+    const midPointY = cardHeight / 2;
+    
+    const cursorX = e.clientX - rect.left;
+    const cursorY = e.clientY - rect.top;
+    
+    const maxAngleY = 15;
+    const maxAngleX = 5;
+    
+    // Y-axis tilt: negative side pushes in based on requested logic
+    const rotateY = (cursorX - midPointX) * (maxAngleY / (cardWidth / 2));
+    
+    // X-axis tilt: top side pushes in if cursor on top
+    const rotateX = (cursorY - midPointY) * (maxAngleX / (cardHeight / 2));
+
+    setTransform(`rotateY(${rotateY}deg) rotateX(${rotateX}deg) scale3d(1.05, 1.05, 1.05) translateZ(50px)`);
+    setTransition("transform 0.1s linear");
+    setZIndex(50);
+  }, [prefersReduced]);
+
+  const handleMouseLeave = useCallback(() => {
+    setTransform(`rotateY(${baseRotateY}deg) rotateX(0deg) scale3d(1, 1, 1) translateZ(0px)`);
+    setTransition("transform 0.4s cubic-bezier(0.25, 1, 0.5, 1)");
+    setZIndex(index);
+  }, [baseRotateY, index]);
+
+  return (
+    <div
+      ref={cardRef}
+      onMouseMove={handleMouseMove}
+      onMouseLeave={handleMouseLeave}
+      className={`relative w-[260px] h-[380px] flex-shrink-0 bg-white rounded-[32px] p-2 flex flex-col justify-between cursor-pointer group shadow-2xl ${
+        index === 0 ? "" : index === 3 ? "ml-5" : "-ml-8 lg:-ml-12"
+      }`}
+      style={{
+        transform,
+        transition,
+        zIndex,
+        transformStyle: "preserve-3d",
+      }}
+    >
+      <div className="relative w-full h-[50%] rounded-[24px] overflow-hidden bg-gray-100">
+        <img src={card.image} alt={card.title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
+        <div className="absolute top-4 left-4 size-10 bg-white/80 backdrop-blur-md rounded-full flex items-center justify-center text-[#b75233] shadow-sm">
+          {card.icon}
+        </div>
+      </div>
+      <div className="flex flex-col relative z-10 flex-1 p-6">
+        <h3 className="text-[22px] font-bold text-[#153322] mb-3 leading-tight" style={{ fontFamily: "'Outfit', sans-serif" }}>{card.title}</h3>
+        <p className="text-[15px] text-[#5f6b63] leading-relaxed flex-1" style={{ fontFamily: "'Figtree', sans-serif" }}>{card.desc}</p>
+        <Link
+          href="/auth/signup"
+          className="block w-full py-4 mt-6 rounded-[20px] bg-[#153322] text-white font-bold text-[15px] text-center transition-all group-hover:bg-[#b75233]"
+          style={{ fontFamily: "'Figtree', sans-serif" }}
+        >
+          {card.cta}
+        </Link>
+      </div>
+    </div>
+  );
+}
+
+function FeaturesSection() {
+  const cards = [
+    { title: "AI-Powered Analysis", desc: "Every ingredient analyzed by NutriSafe AI against your health profile.", icon: <IconCircleCheck color="currentColor" />, cta: "Try It Free", image: "/features/card_dietary_filters_1787225989249.jpg" },
+    { title: "Allergen Detection", desc: "Instantly flags allergens like Nuts, Gluten, Dairy, Soy, and more.", icon: <IconSearch color="currentColor" />, cta: "Try It Free", image: "/features/card_allergen_alerts_1787226002275.jpg" },
+    { title: "Real-Time Parse", desc: "Decodes complex ingredients into plain language.", icon: <IconCircleX color="currentColor" />, cta: "Try It Free", image: "/features/card_ingredient_breakdown_1787226032562.jpg" },
+    { title: "Personalized Verdicts", desc: "Tailored fit ratings for conditions like Diabetes, Hypertension, or PCOS.", icon: <IconUserPlus color="currentColor" />, cta: "Try It Free", image: "/features/card_health_sync_1787226059744.jpg" },
+    { title: "Photo OCR Scan", desc: "Just snap a picture of a label and let AI extract the ingredients.", icon: <IconGift color="currentColor" />, cta: "Try It Free", image: "/features/card_meal_intel_1787226084980.jpg" },
+    { title: "Scan History", desc: "Keep track of past scans and easily build your list of safe foods.", icon: <IconCircleCheck color="currentColor" />, cta: "Try It Free", image: "/features/card_special_modes_1787226448509.jpg" },
+  ];
+
+  return (
+    <section
+      id="features"
+      className="sticky top-0 w-full min-h-screen bg-[#E1F2E7] pt-24 lg:pt-32 overflow-hidden flex flex-col justify-between scroll-mt-24"
+      style={{
+        zIndex: 20,
+        backgroundImage: 'linear-gradient(to right, rgba(21, 51, 34, 0.05) 1px, transparent 1px), linear-gradient(to bottom, rgba(21, 51, 34, 0.05) 1px, transparent 1px)',
+        backgroundSize: '40px 40px'
+      }}
+    >
+      {/* Top: Heading */}
+      <div className="w-full flex flex-col items-start px-10 lg:px-20 relative z-10">
+        <h2
+          className="text-[#153322] uppercase leading-none flex flex-col w-full max-w-[400px]"
+          style={{ fontFamily: "'Outfit', sans-serif" }}
+        >
+          <span className="text-[64px] lg:text-[100px] font-bold text-left">Features</span>
+          <span className="text-[24px] lg:text-[36px] font-medium opacity-80 mt-2 text-left">We Offer</span>
+        </h2>
+      </div>
+      
+      {/* Bottom: Fanned Cards */}
+      <div 
+        className="w-full flex-1 flex items-end justify-center pb-12 lg:pb-20 relative z-10"
+        style={{ perspective: "1500px", transformStyle: "preserve-3d" }}
+      >
+        <div className="flex items-center justify-center w-full" style={{ transformStyle: "preserve-3d" }}>
+          {cards.map((card, i) => (
+            <Interactive3DCard key={i} card={card} index={i} />
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+// ─── Pricing Section ──────────────────────────────────────────────────────────
+
+type PricingFeature = string;
+
+interface PricingPlan {
+  name: string;
+  price: string;
+  period: string;
+  desc: string;
+  features: PricingFeature[];
+  cta: string;
+  highlight: boolean;
+  badge?: string;
+}
+
+const PLANS: PricingPlan[] = [
+  {
+    name: "Free Scanner",
+    price: "₹0",
+    period: "",
+    desc: "Everything you need to check a product against your health profile before you buy.",
+    features: [
+      "Health profile: conditions, allergies, diet",
+      "Barcode scanning via Open Food Facts",
+      "Label photo OCR & manual ingredient entry",
+      "NutriSafe AI fit analysis (Good Fit / Use Caution / Not Recommended)",
+      "Scan history & Safe for Me list",
+      "10 scans/day, 15 AI chat messages/day",
+    ],
+    cta: "Start Scanning Free",
+    highlight: false,
+  },
+  {
+    name: "NutriSafe Premium",
+    price: "₹500",
+    period: "/month",
+    desc: "Higher limits, plus the AI Diet & Workout Plan generator.",
+    features: [
+      "60 scans/day, 60 AI chat messages/day",
+      "Up to 10 AI diet & workout plans per month",
+      "Save and edit unlimited saved plans",
+      "Advanced ingredient risk analysis",
+      "Priority NutriSafe AI generation speed",
+      "30 days of access per payment — renew anytime",
+    ],
+    cta: "Upgrade to Premium",
+    highlight: true,
+    badge: "MOST POPULAR",
+  },
+];
+
+function PricingCard({ plan }: { plan: PricingPlan }) {
+  const cardRef = useRef<HTMLDivElement>(null);
+  const prefersReduced = useReducedMotion();
+  const baseScale = plan.highlight ? 1.05 : 1;
+  const [transform, setTransform] = useState(`rotateY(0deg) rotateX(0deg) scale3d(${baseScale}, ${baseScale}, 1) translateZ(0px)`);
+  const [transition, setTransition] = useState("transform 0.4s cubic-bezier(0.25, 1, 0.5, 1)");
+
+  const handleMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    if (prefersReduced || !cardRef.current) return;
+    const rect = cardRef.current.getBoundingClientRect();
+    const cardWidth = rect.width;
+    const cardHeight = rect.height;
+    
+    const midPointX = cardWidth / 2;
+    const midPointY = cardHeight / 2;
+    
+    const cursorX = e.clientX - rect.left;
+    const cursorY = e.clientY - rect.top;
+    
+    const maxAngleY = 15;
+    const maxAngleX = 5;
+    
+    const rotateY = (cursorX - midPointX) * (maxAngleY / (cardWidth / 2));
+    const rotateX = (cursorY - midPointY) * (maxAngleX / (cardHeight / 2));
+
+    setTransform(`rotateY(${rotateY}deg) rotateX(${rotateX}deg) scale3d(${baseScale + 0.05}, ${baseScale + 0.05}, 1.05) translateZ(50px)`);
+    setTransition("transform 0.1s linear");
+  }, [prefersReduced, baseScale]);
+
+  const handleMouseLeave = useCallback(() => {
+    setTransform(`rotateY(0deg) rotateX(0deg) scale3d(${baseScale}, ${baseScale}, 1) translateZ(0px)`);
+    setTransition("transform 0.4s cubic-bezier(0.25, 1, 0.5, 1)");
+  }, [baseScale]);
+
+  return (
+    <div
+      ref={cardRef}
+      onMouseMove={handleMouseMove}
+      onMouseLeave={handleMouseLeave}
+      className={`flex flex-col gap-8 p-10 rounded-[24px] h-full ${plan.highlight ? 'z-10' : 'z-0'}`}
+      style={{
+        background: plan.highlight ? "#153322" : "white",
+        border: plan.highlight ? "1px solid transparent" : "1px solid #e4ece6",
+        boxShadow: plan.highlight ? "0 16px 40px rgba(21,51,34,0.18)" : "none",
+        transform,
+        transition,
+        transformStyle: "preserve-3d",
+      }}
+    >
+      {/* Header */}
+      <div className="flex flex-col gap-3">
+        <div className="flex items-center justify-between">
+          <p
+            className="text-lg"
+            style={{
+              fontFamily: "'Outfit', sans-serif",
+              fontWeight: 700,
+              color: plan.highlight ? "#4aa366" : "#153322",
+            }}
+          >
+            {plan.name}
+          </p>
+          {plan.badge && (
+            <span
+              className="px-2.5 py-1 rounded-md text-[11px] font-bold bg-[#4aa366] text-[#153322]"
+              style={{ fontFamily: "'Figtree', sans-serif" }}
+            >
+              {plan.badge}
+            </span>
+          )}
+        </div>
+
+        <div>
+          <span
+            className="text-[44px] leading-none"
+            style={{
+              fontFamily: "'Outfit', sans-serif",
+              fontWeight: 800,
+              color: plan.highlight ? "white" : "#153322",
+            }}
+          >
+            {plan.price}
+          </span>
+          <span
+            className="text-base ml-1"
+            style={{
+              fontFamily: "'Outfit', sans-serif",
+              fontWeight: 500,
+              color: plan.highlight ? "#ccd8d1" : "#5f6b63",
+            }}
+          >
+            {plan.period}
+          </span>
+        </div>
+
+        <p
+          className="text-[14px] leading-5"
+          style={{
+            fontFamily: "'Figtree', sans-serif",
+            color: plan.highlight ? "#ccd8d1" : "#5f6b63",
+          }}
+        >
+          {plan.desc}
+        </p>
+      </div>
+
+      {/* Divider */}
+      <div
+        className="h-px w-full"
+        style={{
+          background: plan.highlight ? "rgba(255,255,255,0.12)" : "#e4ece6",
+        }}
+      />
+
+      {/* Features */}
+      <div className="flex flex-col gap-4 flex-1">
+        {plan.features.map((feat) => (
+          <div key={feat} className="flex items-start gap-3">
+            <div className="mt-0.5">
+              <IconCircleCheck color={plan.highlight ? "white" : "currentColor"} />
+            </div>
+            <p
+              className="text-[14px] leading-5"
+              style={{
+                fontFamily: "'Figtree', sans-serif",
+                color: plan.highlight ? "white" : "#1f2421",
+              }}
+            >
+              {feat}
+            </p>
+          </div>
+        ))}
+      </div>
+
+      {/* CTA */}
+      <Link
+        href="/auth/signup"
+        className="block w-full py-4 rounded-full text-base font-bold transition-all cursor-pointer hover:opacity-90 mt-auto text-center"
+        style={{
+          fontFamily: "'Figtree', sans-serif",
+          background: plan.highlight ? "#4aa366" : "#153322",
+          color: "white",
+        }}
+      >
+        {plan.cta}
+      </Link>
+    </div>
+  );
+}
+
+function PricingSection() {
+  return (
+    <section id="pricing" className="relative bg-[#f9f8f3] scroll-mt-24" style={{ zIndex: 20 }}>
+      <div className="px-10 lg:px-20 py-24 max-w-[1440px] mx-auto flex flex-col gap-16">
+        {/* Header */}
+        <div className="flex flex-col items-center gap-4">
+          <h2
+            className="text-[#153322] text-[40px] text-center max-w-[600px] leading-tight"
+            style={{ fontFamily: "'Outfit', sans-serif", fontWeight: 800 }}
+          >
+            Start Free, Unlock Full AI Diet &amp; Workout Plans Anytime
+          </h2>
+        </div>
+
+        {/* Cards */}
+        <div 
+          className="flex flex-col lg:flex-row gap-6 items-center justify-center lg:items-center py-10"
+          style={{ perspective: "1500px", transformStyle: "preserve-3d" }}
+        >
+          {PLANS.map((plan) => (
+            <PricingCard key={plan.name} plan={plan} />
+          ))}
+        </div>
+
+        <p
+          className="text-center text-sm text-[#5f6b63] -mt-8"
+          style={{ fontFamily: "'Figtree', sans-serif" }}
+        >
+          Daily and monthly limits reset automatically — see the full breakdown in our{" "}
+          <Link href="/legal/fair-usage" className="underline hover:text-[#153322]">
+            Fair Usage Policy
+          </Link>
+          .
+        </p>
+      </div>
+    </section>
+  );
+}
+
+// ─── Final CTA ────────────────────────────────────────────────────────────────
+
+function FinalCtaSection() {
+  return (
+    <section
+      className="relative overflow-hidden"
+      style={{ zIndex: 20, background: "#153322" }}
+    >
+      {/* BG Image */}
+      <img
+        src={CTA_BG}
+        alt=""
+        aria-hidden
+        className="absolute inset-0 w-full h-full object-cover opacity-20"
+      />
+      <div
+        className="absolute inset-0"
+        style={{ background: "rgba(21,51,34,0.88)" }}
+      />
+
+      <div className="relative flex flex-col lg:flex-row items-center gap-20 px-10 lg:px-20 py-24 max-w-[1440px] mx-auto min-h-[551px]">
+        {/* Left copy */}
+        <div className="flex-1 flex flex-col gap-6">
+          <h2
+            className="text-white text-[40px] lg:text-[48px] leading-[1.15]"
+            style={{ fontFamily: "'Outfit', sans-serif", fontWeight: 800 }}
+          >
+            Never Choose Between Joy and Your Health Again
+          </h2>
+          <p
+            className="text-[#ccd8d1] text-[18px] leading-7 max-w-[560px]"
+            style={{ fontFamily: "'Figtree', sans-serif", fontWeight: 400 }}
+          >
+            Built for people managing diabetes, PCOS, allergies, and other dietary
+            constraints — with safety, certainty, and flavor.
+          </p>
+          <div className="flex flex-wrap gap-4 pt-3">
+            <Link href="/auth/signup">
+              <PrimaryBtn label="Build Free Health Profile" />
             </Link>
-            <Link href="/auth/signin" className="btn-secondary text-base px-6 py-3">
-              Sign in
+            <Link href="/auth/signin">
+              <GhostBtn label="Chat with NutriSafe AI" dark />
             </Link>
           </div>
-        </section>
+        </div>
 
-        <section className="border-t border-slate-200 bg-white py-16">
-          <div className="mx-auto max-w-6xl px-4">
-            <h2 className="text-center text-2xl font-bold text-slate-900">
-              How it works
-            </h2>
-            <div className="mt-12 grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
-              <div className="card text-center">
-                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary-100 text-primary-600">
-                  <Heart className="h-6 w-6" />
-                </div>
-                <h3 className="mt-4 font-semibold text-slate-900">Your health profile</h3>
-                <p className="mt-2 text-sm text-slate-600">
-                  Set conditions, allergies, and diet. We never share your health data.
-                </p>
+        {/* Right image */}
+        <div className="shrink-0 rounded-[24px] overflow-hidden w-full lg:w-[480px] h-[360px]">
+          <img
+            src={FOOD_IMG}
+            alt="Nutritious meal bowl with colorful vegetables"
+            className="w-full h-full object-cover"
+          />
+        </div>
+      </div>
+    </section>
+  );
+}
+
+// ─── Footer ───────────────────────────────────────────────────────────────────
+
+const FOOTER_SOLUTIONS = ["Diabetes Management", "PCOS Diet", "Nut & Allergen Guard", "Gluten-Free"];
+const FOOTER_POWERED_BY = ["Open Food Facts Barcode Data", "NutriSafe AI Ingredient Analysis"];
+const FOOTER_LEGAL = [
+  { label: "Terms of Service", href: "/legal/terms" },
+  { label: "Privacy Policy", href: "/legal/privacy" },
+  { label: "Refund Policy", href: "/legal/refund-policy" },
+  { label: "Fair Usage Policy", href: "/legal/fair-usage" },
+];
+
+function Footer() {
+  return (
+    <footer
+      className="relative bg-[#153322]"
+      style={{ zIndex: 20 }}
+    >
+      <div className="px-10 lg:px-20 pt-20 pb-10 max-w-[1440px] mx-auto flex flex-col gap-16">
+        <div className="flex flex-col lg:flex-row justify-between gap-16">
+          {/* Brand */}
+          <div className="flex flex-col gap-6 max-w-[320px]">
+            <div className="flex items-center gap-3">
+              <div className="flex items-center justify-center size-10 rounded-xl bg-[#4aa366]">
+                <IconCircleX />
               </div>
-              <div className="card text-center">
-                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary-100 text-primary-600">
-                  <Scan className="h-6 w-6" />
-                </div>
-                <h3 className="mt-4 font-semibold text-slate-900">Scan or type</h3>
-                <p className="mt-2 text-sm text-slate-600">
-                  Barcode scan, label photo, or manual input—we interpret complex labels.
-                </p>
+              <span
+                className="text-white text-[22px] font-extrabold"
+                style={{ fontFamily: "'Outfit', sans-serif" }}
+              >
+                NutriSafe
+              </span>
+            </div>
+            <p
+              className="text-[#ccd8d1] text-[14px] leading-[22px]"
+              style={{ fontFamily: "'Figtree', sans-serif" }}
+            >
+              AI-analyzed food safety insights, tailored dynamically for
+              chronic conditions, food sensitivities, and allergen safety.
+            </p>
+          </div>
+
+          {/* Link columns */}
+          <div className="flex flex-wrap gap-16">
+            <div className="flex flex-col gap-4 w-[180px]">
+              <p
+                className="text-[#4aa366] text-[15px] font-bold"
+                style={{ fontFamily: "'Outfit', sans-serif" }}
+              >
+                Solutions
+              </p>
+              <div className="flex flex-col gap-3">
+                {FOOTER_SOLUTIONS.map((link) => (
+                  <Link
+                    key={link}
+                    href="/auth/signup"
+                    className="text-white text-[14px] hover:text-[#4aa366] transition-colors"
+                    style={{ fontFamily: "'Figtree', sans-serif" }}
+                  >
+                    {link}
+                  </Link>
+                ))}
               </div>
-              <div className="card text-center">
-                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary-100 text-primary-600">
-                  <Shield className="h-6 w-6" />
-                </div>
-                <h3 className="mt-4 font-semibold text-slate-900">Instant risk level</h3>
-                <p className="mt-2 text-sm text-slate-600">
-                  Low, medium, or high risk with plain-language explanations per ingredient.
-                </p>
+            </div>
+            <div className="flex flex-col gap-4 w-[220px]">
+              <p
+                className="text-[#4aa366] text-[15px] font-bold"
+                style={{ fontFamily: "'Outfit', sans-serif" }}
+              >
+                Powered By
+              </p>
+              <div className="flex flex-col gap-3">
+                {FOOTER_POWERED_BY.map((item) => (
+                  <span
+                    key={item}
+                    className="text-[#ccd8d1] text-[14px]"
+                    style={{ fontFamily: "'Figtree', sans-serif" }}
+                  >
+                    {item}
+                  </span>
+                ))}
               </div>
-              <div className="card text-center">
-                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary-100 text-primary-600">
-                  <Sparkles className="h-6 w-6" />
-                </div>
-                <h3 className="mt-4 font-semibold text-slate-900">Smart recommendations</h3>
-                <p className="mt-2 text-sm text-slate-600">
-                  Healthier alternatives and diet tips tailored to your profile.
-                </p>
+            </div>
+            <div className="flex flex-col gap-4 w-[180px]">
+              <p
+                className="text-[#4aa366] text-[15px] font-bold"
+                style={{ fontFamily: "'Outfit', sans-serif" }}
+              >
+                Legal
+              </p>
+              <div className="flex flex-col gap-3">
+                {FOOTER_LEGAL.map((link) => (
+                  <Link
+                    key={link.href}
+                    href={link.href}
+                    className="text-white text-[14px] hover:text-[#4aa366] transition-colors"
+                    style={{ fontFamily: "'Figtree', sans-serif" }}
+                  >
+                    {link.label}
+                  </Link>
+                ))}
               </div>
             </div>
           </div>
-        </section>
-      </main>
+        </div>
 
-      <footer className="border-t border-slate-200 py-6 text-center text-sm text-slate-500">
-        NutriSafe – Food Safety & Diet Assistant. Your health data stays private.
-      </footer>
+        {/* Divider */}
+        <div className="h-px w-full" style={{ background: "rgba(255,255,255,0.13)" }} />
+
+        {/* Bottom bar */}
+        <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
+          <p
+            className="text-[#ccd8d1] text-[12px]"
+            style={{ fontFamily: "'Figtree', sans-serif" }}
+          >
+            © 2026 NutriSafe. All rights reserved.
+          </p>
+          <p
+            className="text-[#ccd8d1] text-[11px] leading-relaxed lg:text-right max-w-[600px]"
+            style={{ fontFamily: "'Figtree', sans-serif" }}
+          >
+            Disclaimer: NutriSafe and its AI system are designed for supplemental dietary
+            exploration. Always coordinate with your doctor or dietitian before making significant dietary changes if managing chronic illnesses.
+          </p>
+        </div>
+      </div>
+    </footer>
+  );
+}
+
+// ─── App ──────────────────────────────────────────────────────────────────────
+
+export default function HomePage() {
+  return (
+    <div className="relative bg-white">
+      {/* GLOBAL NAVBAR */}
+      <LandingNav />
+
+      {/* HERO — sticky, sits behind scrolling content */}
+      <HeroSection />
+
+      {/* Spacer to increase scroll duration before Features slide up */}
+      <div className="w-full h-[75vh] pointer-events-none" />
+
+      {/* FEATURES — sticky, slides over hero, sits behind remaining content */}
+      <FeaturesSection />
+
+      {/* Spacer to increase scroll duration before remaining content slides up */}
+      <div className="w-full h-[75vh] pointer-events-none" />
+
+      {/* CONTENT — slides up over the features */}
+      <div className="relative" style={{ zIndex: 30, background: "white" }}>
+        <HowItWorksSection />
+        <PricingSection />
+        <FinalCtaSection />
+        <Footer />
+      </div>
     </div>
   );
 }

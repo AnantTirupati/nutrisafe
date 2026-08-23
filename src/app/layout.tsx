@@ -15,7 +15,7 @@ const jetbrainsMono = JetBrains_Mono({
 export const metadata: Metadata = {
   title: "NutriSafe – Food Safety & Diet Assistant",
   description:
-    "Analyze packaged food ingredients against your health conditions and allergies. Get instant risk levels and personalized insights.",
+    "Analyze packaged food ingredients against your health conditions and allergies. Get an instant fit verdict and personalized insights.",
 };
 
 export default function RootLayout({

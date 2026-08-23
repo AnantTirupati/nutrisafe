@@ -1,9 +1,10 @@
+@import url('https://fonts.googleapis.com/css2?family=Figtree:wght@300..700&family=Outfit:wght@400..800&display=swap');
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
-  --primary: 22 163 74;
+  --primary: 74 163 102;
   --risk-low: 34 197 94;
   --risk-medium: 234 179 8;
   --risk-high: 239 68 68;
@@ -25,5 +26,66 @@ body {
   }
   .input {
     @apply block w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-slate-900 placeholder-slate-400 focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500;
+  }
+
+  /* Legal/policy document typography — plain semantic HTML, no Tailwind Typography plugin installed. */
+  .legal-content h1 {
+    @apply text-3xl font-bold text-slate-900 mb-2;
+    font-family: "Outfit", sans-serif;
+  }
+  .legal-content .legal-updated {
+    @apply text-sm text-slate-500 mb-8;
+  }
+  .legal-content h2 {
+    @apply text-xl font-semibold text-slate-900 mt-10 mb-3;
+  }
+  .legal-content h3 {
+    @apply text-base font-semibold text-slate-800 mt-6 mb-2;
+  }
+  .legal-content p {
+    @apply text-slate-700 leading-7 mb-4;
+  }
+  .legal-content ul {
+    @apply list-disc pl-6 mb-4 space-y-1.5 text-slate-700 leading-7;
+  }
+  .legal-content li > strong {
+    @apply text-slate-900;
+  }
+  .legal-content a {
+    @apply text-primary-700 underline hover:text-primary-800;
+  }
+  .legal-content strong {
+    @apply font-semibold text-slate-900;
+  }
+}
+
+* {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #ccd8d1;
+  border-radius: 3px;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+body:hover ::-webkit-scrollbar-thumb {
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-blob {
+    animation: none;
   }
 }
