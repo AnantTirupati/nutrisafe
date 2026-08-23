@@ -352,7 +352,7 @@ Your job is to create a highly personalized, practical, and budget-friendly diet
 - Prefer Indian food options and ingredients where possible.
 - Keep workouts beginner-friendly unless workout level is intermediate/advanced.
 - Use simple, clear language.
-- Always add a disclaimer at the end.
+- Always add a disclaimer at the end.${customReq ? `\n- 🚨 CRITICAL: The user has provided a SPECIAL REQUEST. You MUST prioritize and strictly incorporate this request into the diet and workout plan.` : ""}
 
 👤 USER PROFILE:
 - Age: ${input.age} years
@@ -368,7 +368,7 @@ Your job is to create a highly personalized, practical, and budget-friendly diet
 - Medical Conditions: ${conditions}
 - Allergies: ${allergies}
 - Additional Notes: ${notes}
-${customReq ? `- Special Request: ${customReq}` : ""}
+${customReq ? `- 🚨 SPECIAL REQUEST (MUST FOLLOW EXACTLY): ${customReq}` : ""}
 
 🧠 GENERATE THE FOLLOWING (use exactly these section headers):
 
@@ -400,8 +400,11 @@ Simple list of ingredients needed for the day's meals. Group by category (Grains
 Tailor intensity to: ${input.workoutLevel} level.
 
 ---
-## 📅 Weekly Plan (Mon–Sun)
-One line per day showing: workout type + focus area + diet focus.
+## 📅 Weekly Repetitive Schedule (Mon–Sun)
+Provide a structured, repetitive 7-day routine that the user can loop week after week.
+For each day (Monday to Sunday), clearly specify:
+- Workout: Type of exercise and focus area (or Rest/Active Recovery).
+- Diet: Key meal variation or specific nutritional focus for that day.
 
 ---
 ## 💡 Tips
