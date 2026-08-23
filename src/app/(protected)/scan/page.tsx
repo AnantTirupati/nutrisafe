@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import dynamic from "next/dynamic";
-import { Barcode, Image, Type, Loader2, AlertCircle, Camera } from "lucide-react";
+import { Barcode, Image, Type, Loader2, AlertCircle, Camera, Heart, RefreshCw } from "lucide-react";
 import { RiskBadge } from "@/components/RiskBadge";
 import { cn } from "@/lib/utils";
 import type { RiskLevel } from "@/lib/utils";
@@ -16,6 +16,15 @@ const BarcodeScanner = dynamic(
 
 type Tab = "barcode" | "upload" | "manual";
 
+type SafeFoodItem = {
+  id: string;
+  productName: string;
+  productId?: string;
+  barcode?: string | null;
+  source: string;
+  createdAt: string;
+};
+
 type AnalysisResult = {
   productName: string;
   ingredients: string[];
@@ -24,6 +33,7 @@ type AnalysisResult = {
   ingredientInsights: { name: string; category: string; explanation: string; reason?: string }[];
   recommendations: string[];
   suggestedProductSearches?: string[];
+  formulationAlert?: string;
 };
 
 async function compressImage(file: File, maxPx = 1200, quality = 0.8): Promise<string> {
@@ -60,6 +70,40 @@ export default function ScanPage() {
   const [result, setResult] = useState<AnalysisResult | null>(null);
   const [showBarcodeScanner, setShowBarcodeScanner] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [safeFoods, setSafeFoods] = useState<SafeFoodItem[]>([]);
+  const [safeFoodsLoading, setSafeFoodsLoading] = useState(true);
+  const [scanQuota, setScanQuota] = useState<{ used: number; limit: number } | null>(null);
+
+  async function loadSafeFoods() {
+    setSafeFoodsLoading(true);
+    try {
+      const res = await fetch("/api/safe-foods?limit=20");
+      if (res.ok) {
+        const data = await res.json();
+        setSafeFoods(data.safeFoods ?? []);
+      }
+    } finally {
+      setSafeFoodsLoading(false);
+    }
+  }
+
+  async function loadScanQuota() {
+    try {
+      const res = await fetch("/api/usage");
+      if (res.ok) {
+        const data = await res.json();
+        const scanUsage = data.usage?.find((u: { action: string }) => u.action === "scan");
+        if (scanUsage) setScanQuota({ used: scanUsage.used, limit: scanUsage.limit });
+      }
+    } catch {
+      // Non-critical — quietly skip if this fails, don't block scanning over it.
+    }
+  }
+
+  useEffect(() => {
+    loadSafeFoods();
+    loadScanQuota();
+  }, []);
 
   async function onFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -139,6 +183,10 @@ export default function ScanPage() {
         return;
       }
       setResult(data.analysis);
+      if (data.analysis?.riskLevel === "low") {
+        loadSafeFoods();
+      }
+      loadScanQuota();
     } catch {
       setError("Analysis failed.");
     } finally {
@@ -182,16 +230,37 @@ export default function ScanPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold text-slate-900">Scan food</h1>
-      <p className="mt-1 text-slate-600">
-        Use barcode, upload a label image, or type ingredients to get a personalized risk analysis.
-      </p>
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900">Scan &amp; Safe Foods</h1>
+          <p className="mt-1 text-slate-600">
+            Use barcode, upload a label image, or type ingredients to get a personalized risk analysis. Low-risk finds are saved below.
+          </p>
+        </div>
+        {scanQuota && (
+          <span
+            className={cn(
+              "shrink-0 rounded-full border px-3 py-1.5 text-xs font-medium",
+              scanQuota.used >= scanQuota.limit
+                ? "border-red-200 bg-red-50 text-red-700"
+                : "border-slate-200 bg-slate-50 text-slate-600"
+            )}
+            title="Resets daily"
+          >
+            {scanQuota.used}/{scanQuota.limit} scans today
+          </span>
+        )}
+      </div>
 
-      <div className="mt-6 flex gap-2 border-b border-slate-200">
+      <div role="tablist" aria-label="Food input method" className="mt-6 flex gap-2 border-b border-slate-200">
         {tabs.map(({ id, label, icon: Icon }) => (
           <button
             key={id}
             type="button"
+            role="tab"
+            id={`tab-${id}`}
+            aria-selected={tab === id}
+            aria-controls={`tabpanel-${id}`}
             onClick={() => setTab(id)}
             className={cn(
               "flex items-center gap-2 rounded-t-lg border border-b-0 px-4 py-2 text-sm font-medium transition-colors",
@@ -206,7 +275,12 @@ export default function ScanPage() {
         ))}
       </div>
 
-      <div className="card mt-0 rounded-t-none">
+      <div
+        role="tabpanel"
+        id={`tabpanel-${tab}`}
+        aria-labelledby={`tab-${tab}`}
+        className="card mt-0 rounded-t-none"
+      >
         {tab === "barcode" && (
           <div className="space-y-4">
             {showBarcodeScanner ? (
@@ -351,6 +425,12 @@ export default function ScanPage() {
             <span className="font-medium text-slate-700">{result.productName}</span>
             <RiskBadge riskLevel={result.riskLevel} />
           </div>
+          {result.formulationAlert && (
+            <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+              <RefreshCw className="h-4 w-4 shrink-0 mt-0.5" />
+              <span>{result.formulationAlert}</span>
+            </div>
+          )}
           <p className="text-slate-600">{result.riskSummary}</p>
           {result.ingredientInsights.length > 0 && (
             <div>
@@ -368,7 +448,9 @@ export default function ScanPage() {
                   >
                     <span className="font-medium">{i.name}</span>
                     {i.category !== "safe" && (
-                      <span className="ml-2 text-xs font-medium uppercase">({i.category})</span>
+                      <span className="ml-2 text-xs font-medium uppercase">
+                        ({i.category === "harmful" ? "avoid" : i.category})
+                      </span>
                     )}
                     <p className="mt-1 text-slate-700">{i.explanation}</p>
                     {i.reason && <p className="mt-0.5 text-xs opacity-90">{i.reason}</p>}
@@ -422,6 +504,51 @@ export default function ScanPage() {
           </p>
         </div>
       )}
+
+      {/* Safe Foods */}
+      <div id="safe-foods" className="mt-10 scroll-mt-20">
+        <div className="flex items-center gap-2">
+          <Heart className="h-5 w-5 text-green-500" />
+          <h2 className="text-lg font-semibold text-slate-900">Your Safe Foods</h2>
+        </div>
+        <p className="mt-1 text-sm text-slate-600">
+          Foods you&apos;ve scanned that were a good fit for your profile.
+        </p>
+
+        {safeFoodsLoading ? (
+          <div className="mt-6 flex items-center justify-center py-8">
+            <Loader2 className="h-6 w-6 animate-spin text-primary-600" />
+          </div>
+        ) : safeFoods.length === 0 ? (
+          <div className="card mt-4 flex flex-col items-center justify-center py-10 text-center">
+            <Heart className="h-10 w-10 text-green-400" />
+            <p className="mt-3 font-medium text-slate-700">No safe foods yet</p>
+            <p className="mt-1 text-sm text-slate-600">
+              When you scan products that are a good fit for you, they&apos;ll appear here.
+            </p>
+          </div>
+        ) : (
+          <ul className="mt-4 space-y-3">
+            {safeFoods.map((item) => (
+              <li
+                key={item.id}
+                className="card flex items-center justify-between gap-4 border-green-100 bg-green-50/50"
+              >
+                <div>
+                  <p className="font-medium text-slate-900">{item.productName}</p>
+                  <p className="mt-0.5 text-xs text-slate-500">
+                    {new Date(item.createdAt).toLocaleString()} · {item.source}
+                    {item.barcode && ` · ${item.barcode}`}
+                  </p>
+                </div>
+                <span className="rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-800">
+                  Good fit
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
     </div>
   );
 }

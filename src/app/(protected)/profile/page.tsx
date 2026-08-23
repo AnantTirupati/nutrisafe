@@ -99,6 +99,8 @@ export default function ProfilePage() {
       <form onSubmit={handleSubmit} className="mt-8 max-w-2xl space-y-6">
         {message && (
           <div
+            role="status"
+            aria-live="polite"
             className={
               message.type === "ok"
                 ? "rounded-lg bg-green-50 p-3 text-sm text-green-700"

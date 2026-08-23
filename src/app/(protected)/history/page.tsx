@@ -43,7 +43,7 @@ export default function HistoryPage() {
     <div>
       <h1 className="text-2xl font-bold text-slate-900">Scan history</h1>
       <p className="mt-1 text-slate-600">
-        Past scans with risk levels. Use &quot;Safe for me&quot; to see only low-risk items.
+        Past scans with results for your profile. Check the Safe Foods list on the Scan page for good fits.
       </p>
       {history.length === 0 ? (
         <div className="card mt-8 flex flex-col items-center justify-center py-12 text-center">
