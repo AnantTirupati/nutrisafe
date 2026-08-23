@@ -9,8 +9,14 @@ import {
   extractTextFromImage,
   analyzeIngredients,
   translateText,
+  looksLikeEnglishOrLatin,
   type UserProfileForAnalysis,
 } from "@/lib/gemini";
+import { checkAndConsumeUsage } from "@/lib/usage";
+import { applySafetyRules } from "@/lib/allergySafety";
+import { lookupKnownIngredients } from "@/lib/ingredientKnowledge";
+import { checkForReformulation } from "@/lib/reformulationCheck";
+import { isPremiumActive } from "@/lib/premium";
 import { z } from "zod";
 
 const AnalyzeSchema = z.object({
@@ -46,6 +52,20 @@ export async function POST(req: Request) {
     const { productName, ingredientsText, ingredients, imageBase64, barcode, source } =
       parsed.data;
 
+    await connectDB();
+    const premium = await isPremiumActive(session.user.id);
+    const usage = await checkAndConsumeUsage(session.user.id, "scan", premium);
+    if (!usage.allowed) {
+      return NextResponse.json(
+        {
+          error: `You've reached your scan limit for today (${usage.limit}/day).${
+            premium ? "" : " Upgrade to Premium for a higher limit."
+          }`,
+        },
+        { status: 429 }
+      );
+    }
+
     let finalText = ingredientsText ?? "";
     let extractedFromImage = false;
 
@@ -55,8 +75,12 @@ export async function POST(req: Request) {
       finalText = ocrText !== "Unable to read label" ? ocrText : finalText;
     }
 
-    // NEW: Translate to English before analysis
-    const { translatedText } = await translateText(finalText || productName);
+    // Skip the translation call entirely when the text is already English/Latin-script —
+    // it's a full extra AI call for no benefit on the common case.
+    const sourceText = finalText || productName;
+    const translatedText = looksLikeEnglishOrLatin(sourceText)
+      ? sourceText
+      : (await translateText(sourceText)).translatedText;
 
     // Use translated text for normalization and analysis
     const ingredientsList =
@@ -69,7 +93,6 @@ export async function POST(req: Request) {
         ? ingredientsList.join(", ")
         : translatedText;
 
-    await connectDB();
     let profileDoc = await HealthProfile.findOne({
       userId: session.user.id,
     }).lean();
@@ -93,11 +116,28 @@ export async function POST(req: Request) {
       additionalNotes: profileDoc.additionalNotes ?? undefined,
     };
 
-    const analysis = await analyzeIngredients(
+    const knownIngredientsContext = await lookupKnownIngredients(ingredientsList);
+    const rawAnalysis = await analyzeIngredients(
       combinedText, // Analyze the English text
       productName,
-      profile
+      profile,
+      knownIngredientsContext
     );
+    let analysis = applySafetyRules(rawAnalysis, profile.allergies, combinedText);
+
+    const finalIngredients = analysis.ingredients?.length ? analysis.ingredients : ingredientsList;
+    const reformulation = await checkForReformulation(barcode, finalIngredients, session.user.id);
+    if (reformulation.changed) {
+      const lastSeen = reformulation.lastSeenAt
+        ? new Date(reformulation.lastSeenAt).toLocaleDateString(undefined, { month: "short", year: "numeric" })
+        : "a previous scan";
+      analysis = {
+        ...analysis,
+        formulationAlert: reformulation.userPreviouslyScanned
+          ? `This product's ingredients have changed since you last scanned it (${lastSeen}). This is a fresh analysis of the current formulation — don't rely on a past result for this product.`
+          : `This product's ingredients have changed since it was last scanned (${lastSeen}, by another user). This is a fresh analysis of the current formulation.`,
+      };
+    }
 
     const product = await FoodProduct.create({
       name: analysis.productName || productName,
@@ -130,6 +170,7 @@ export async function POST(req: Request) {
         ingredientInsights: analysis.ingredientInsights,
         recommendations: analysis.recommendations,
         suggestedProductSearches: analysis.suggestedProductSearches ?? [],
+        formulationAlert: analysis.formulationAlert,
       },
       scanId: scan._id.toString(),
       productId: product._id.toString(),

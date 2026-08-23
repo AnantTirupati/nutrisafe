@@ -48,6 +48,8 @@ export interface AnalysisResult {
   ingredientInsights: IngredientInsight[];
   recommendations: string[];
   suggestedProductSearches?: string[];
+  /** Set when this barcode's ingredients differ from the last time it was scanned. */
+  formulationAlert?: string;
 }
 
 const getSystemPrompt = (language: string = "English") => `You are NutriSafe AI, a friendly and accurate food health assistant. Your goal is to explain food ingredients to everyday people in a way that is easy to understand but still medically accurate for THEIR body.
@@ -128,6 +130,26 @@ export async function extractTextFromImage(base64Image: string): Promise<string>
   return text?.trim() ?? "Unable to read label";
 }
 
+/**
+ * Cheap, zero-cost check: if the text has no non-ASCII characters, it's
+ * already English/Latin-script and a translation call would be wasted spend.
+ * Conservative on purpose — anything with even one non-ASCII character still
+ * goes through translation.
+ */
+export function looksLikeEnglishOrLatin(text: string): boolean {
+  if (!text.trim()) return true;
+  return !/[^\x00-\x7F]/.test(text);
+}
+
+function tryParseJson<T>(text: string): T | null {
+  const cleaned = text.replace(/```json?\s*/g, "").replace(/```\s*/g, "").trim();
+  try {
+    return JSON.parse(cleaned) as T;
+  } catch {
+    return null;
+  }
+}
+
 export async function translateText(text: string): Promise<{ translatedText: string; detectedLanguage: string }> {
   const prompt = `Identify the language of the following text and translate it to English.
   
@@ -156,29 +178,43 @@ export async function translateText(text: string): Promise<{ translatedText: str
 export async function analyzeIngredients(
   ingredientsText: string,
   productName: string,
-  profile: UserProfileForAnalysis
+  profile: UserProfileForAnalysis,
+  knownIngredientsContext?: string
 ): Promise<AnalysisResult> {
   const profileStr = JSON.stringify(profile, null, 0);
+  const knownBlock = knownIngredientsContext
+    ? `\nReference information for some of these ingredients — prefer this over your own general knowledge where it applies:\n${knownIngredientsContext}\n`
+    : "";
   const prompt = `User health profile:
 ${profileStr}
 
 Product name: ${productName}
-
+${knownBlock}
 Ingredients or label text (may contain OCR errors; normalize and interpret):
 ${ingredientsText}
 
 Return only the JSON object.`;
 
-  const responseText = await callBedrock(
-    [{ role: "user", content: [{ text: prompt }] }],
-    [{ text: getSystemPrompt(profile.preferredLanguage) }]
-  );
+  const systemPrompts = [{ text: getSystemPrompt(profile.preferredLanguage) }];
+  const messages: Message[] = [{ role: "user", content: [{ text: prompt }] }];
 
-  const cleaned = responseText.replace(/```json?\s*/g, "").replace(/```\s*/g, "").trim();
-  let parsed: AnalysisResult;
-  try {
-    parsed = JSON.parse(cleaned) as AnalysisResult;
-  } catch {
+  let responseText = await callBedrock(messages, systemPrompts);
+  let parsed = tryParseJson<AnalysisResult>(responseText);
+
+  if (!parsed) {
+    // One corrective retry in the same conversation before giving up — cheaper
+    // than failing the whole scan (and, now, wasting a usage credit) on a
+    // formatting hiccup.
+    const retryMessages: Message[] = [
+      ...messages,
+      { role: "assistant", content: [{ text: responseText }] },
+      { role: "user", content: [{ text: "That was not valid JSON. Respond again with ONLY the JSON object, no other text." }] },
+    ];
+    responseText = await callBedrock(retryMessages, systemPrompts);
+    parsed = tryParseJson<AnalysisResult>(responseText);
+  }
+
+  if (!parsed) {
     throw new Error("AI returned invalid JSON: " + (responseText?.slice(0, 200) ?? ""));
   }
   if (!parsed.riskLevel || !["low", "medium", "high"].includes(parsed.riskLevel)) {
