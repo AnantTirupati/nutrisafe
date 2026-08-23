@@ -4,6 +4,8 @@ import { connectDB } from "@/lib/db";
 import { HealthProfile } from "@/models/HealthProfile";
 import { authOptions } from "@/lib/auth";
 import { generateDietAndWorkoutPlan, type DietPlanInput } from "@/lib/gemini";
+import { checkAndConsumeUsage } from "@/lib/usage";
+import { isPremiumActive } from "@/lib/premium";
 import { z } from "zod";
 
 const PlanSchema = z.object({
@@ -23,6 +25,15 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  await connectDB();
+  const premium = await isPremiumActive(session.user.id);
+  if (!premium) {
+    return NextResponse.json(
+      { error: "Diet & Workout Plans are a premium feature. Upgrade to generate one." },
+      { status: 403 }
+    );
+  }
+
   try {
     const body = await req.json();
     const parsed = PlanSchema.safeParse(body);
@@ -33,7 +44,14 @@ export async function POST(req: Request) {
       );
     }
 
-    await connectDB();
+    const usage = await checkAndConsumeUsage(session.user.id, "dietPlan", true);
+    if (!usage.allowed) {
+      return NextResponse.json(
+        { error: `You've reached your plan generation limit for this month (${usage.limit}/month). It resets next month.` },
+        { status: 429 }
+      );
+    }
+
     const profileDoc = await HealthProfile.findOne({
       userId: session.user.id,
     }).lean();

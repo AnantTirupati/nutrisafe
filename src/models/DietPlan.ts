@@ -18,5 +18,7 @@ const DietPlanSchema = new Schema<IDietPlan>(
   { timestamps: true }
 );
 
+DietPlanSchema.index({ userId: 1, createdAt: -1 });
+
 export const DietPlan: Model<IDietPlan> =
   mongoose.models.DietPlan ?? mongoose.model<IDietPlan>("DietPlan", DietPlanSchema);

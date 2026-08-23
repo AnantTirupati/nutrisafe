@@ -10,6 +10,8 @@ export interface IUser {
   accounts?: { provider: string; providerAccountId: string }[];
   isPremium?: boolean;
   premiumSince?: Date | null;
+  /** When the current Premium period ends. Null/undefined = a legacy lifetime grant (grandfathered), never expires. */
+  premiumExpiresAt?: Date | null;
   premiumOrderId?: string | null;
   createdAt: Date;
   updatedAt: Date;
@@ -30,6 +32,7 @@ const UserSchema = new Schema<IUser>(
     ],
     isPremium: { type: Boolean, default: false },
     premiumSince: { type: Date, default: null },
+    premiumExpiresAt: { type: Date, default: null },
     premiumOrderId: { type: String, default: null },
   },
   { timestamps: true }

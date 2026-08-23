@@ -21,11 +21,19 @@ export async function POST(req: Request) {
       .digest("hex");
 
     if (razorpay_signature === expectedSign) {
-      // Payment verified successfully
+      // Payment verified successfully — grants 30 days of Premium access.
+      // Renewal is currently manual (return to /premium and pay again); real
+      // auto-recurring billing needs the Razorpay Subscriptions API, which
+      // isn't wired up yet — see MARKET.md.
       await connectDB();
+      const PREMIUM_PERIOD_MS = 30 * 24 * 60 * 60 * 1000;
+      const existing = await User.findById(session.user.id).select("premiumExpiresAt").lean();
+      const currentExpiry = existing?.premiumExpiresAt ? new Date(existing.premiumExpiresAt).getTime() : 0;
+      const baseline = Math.max(currentExpiry, Date.now()); // stack renewal on top of remaining time, if any
       await User.findByIdAndUpdate(session.user.id, {
         isPremium: true,
         premiumSince: new Date(),
+        premiumExpiresAt: new Date(baseline + PREMIUM_PERIOD_MS),
         premiumOrderId: razorpay_order_id,
       });
 

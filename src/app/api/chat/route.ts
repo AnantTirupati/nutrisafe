@@ -8,6 +8,8 @@ import {
   type ChatMessage,
   type UserProfileForAnalysis,
 } from "@/lib/gemini";
+import { checkAndConsumeUsage } from "@/lib/usage";
+import { isPremiumActive } from "@/lib/premium";
 import { z } from "zod";
 
 const ChatSchema = z.object({
@@ -50,6 +52,19 @@ export async function POST(req: Request) {
     }
 
     await connectDB();
+    const premium = await isPremiumActive(session.user.id);
+    const usage = await checkAndConsumeUsage(session.user.id, "chat", premium);
+    if (!usage.allowed) {
+      return NextResponse.json(
+        {
+          error: `You've reached your chat limit for today (${usage.limit}/day).${
+            premium ? "" : " Upgrade to Premium for a higher limit."
+          }`,
+        },
+        { status: 429 }
+      );
+    }
+
     const profileDoc = await HealthProfile.findOne({
       userId: session.user.id,
     }).lean();

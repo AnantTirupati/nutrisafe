@@ -16,7 +16,7 @@ export async function POST() {
     });
 
     const options = {
-      amount: 29900, // ₹299.00 in paise
+      amount: 50000, // ₹500.00 in paise — 30 days of Premium access, see /api/premium/verify
       currency: "INR",
       receipt: `receipt_${Date.now()}`,
     };
