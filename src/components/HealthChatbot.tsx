@@ -5,12 +5,12 @@ import {
   Bot,
   X,
   Send,
-  Minimize2,
   Loader2,
   AlertCircle,
   ImagePlus,
   XCircle,
 } from "lucide-react";
+import { useToast } from "@/components/ui/ToastProvider";
 
 async function compressImage(file: File, maxPx = 1200, quality = 0.8): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -55,17 +55,24 @@ function formatMessage(text: string): React.ReactNode {
   const elements: React.ReactNode[] = [];
   let key = 0;
 
-  for (const line of lines) {
-    if (!line.trim()) {
+  for (const rawLine of lines) {
+    if (!rawLine.trim()) {
       elements.push(<br key={key++} />);
       continue;
     }
+
+    // Nested content (sub-bullets under a numbered item) comes in indented —
+    // track that before trimming so it still gets a bullet/number match, and
+    // give it a visual indent instead of falling through to a bare paragraph.
+    const indent = rawLine.match(/^\s*/)?.[0].length ?? 0;
+    const isNested = indent >= 2;
+    const line = rawLine.trimStart();
 
     // Bullet points
     const bulletMatch = line.match(/^[-•*]\s+(.*)/);
     if (bulletMatch) {
       elements.push(
-        <div key={key++} className="flex items-start gap-1.5 my-0.5">
+        <div key={key++} className={`flex items-start gap-1.5 my-0.5 ${isNested ? "ml-5" : ""}`}>
           <span className="mt-1.5 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-emerald-500" />
           <span>{processBold(bulletMatch[1])}</span>
         </div>
@@ -77,7 +84,7 @@ function formatMessage(text: string): React.ReactNode {
     const numMatch = line.match(/^(\d+)\.\s+(.*)/);
     if (numMatch) {
       elements.push(
-        <div key={key++} className="flex items-start gap-2 my-0.5">
+        <div key={key++} className={`flex items-start gap-2 my-0.5 ${isNested ? "ml-5" : ""}`}>
           <span className="flex-shrink-0 text-xs font-bold text-emerald-600 mt-0.5">
             {numMatch[1]}.
           </span>
@@ -87,21 +94,25 @@ function formatMessage(text: string): React.ReactNode {
       continue;
     }
 
-    // Section headers (emoji + **)
+    // Section headers (emoji + **label**), with or without trailing content
+    // on the same line — the model doesn't always put the answer on a new
+    // line, so trailing text must still be rendered, not dropped.
     const headerMatch = line.match(
-      /^([🩺🥗📊❓🍽🖼⚠️👉💡✅🔒📦👤🧠🖼️]+)\s+\*\*(.*?)\*\*/
+      /^([🩺🥗📊❓🍽🖼⚠️👉💡✅🔒📦👤🧠🖼️]+)\s+\*\*(.*?)\*\*(.*)$/
     );
     if (headerMatch) {
+      const trailing = headerMatch[3]?.trim();
       elements.push(
         <p key={key++} className="font-semibold text-slate-800 mt-2 mb-1">
           {headerMatch[1]} <strong>{headerMatch[2]}</strong>
+          {trailing && <span className="font-normal text-slate-700"> {processBold(trailing)}</span>}
         </p>
       );
       continue;
     }
 
     elements.push(
-      <p key={key++} className="my-0.5">
+      <p key={key++} className={`my-0.5 ${isNested ? "ml-5" : ""}`}>
         {processBold(line)}
       </p>
     );
@@ -126,6 +137,7 @@ function processBold(text: string): React.ReactNode {
 const MAX_IMAGE_SIZE_MB = 4;
 
 export function HealthChatbot() {
+  const { showToast } = useToast();
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([
     { id: "greeting", role: "bot", content: GREETING },
@@ -133,9 +145,23 @@ export function HealthChatbot() {
   const [input, setInput] = useState("");
   const [pendingImage, setPendingImage] = useState<string | null>(null); // base64
   const [loading, setLoading] = useState(false);
+  const [quota, setQuota] = useState<{ used: number; limit: number } | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  async function loadQuota() {
+    try {
+      const res = await fetch("/api/usage");
+      if (res.ok) {
+        const data = await res.json();
+        const chatUsage = data.usage?.find((u: { action: string }) => u.action === "chat");
+        if (chatUsage) setQuota({ used: chatUsage.used, limit: chatUsage.limit });
+      }
+    } catch {
+      // Non-critical — quietly skip if this fails, don't block chatting over it.
+    }
+  }
 
   useEffect(() => {
     if (open) {
@@ -144,7 +170,9 @@ export function HealthChatbot() {
         50
       );
       setTimeout(() => inputRef.current?.focus(), 100);
+      if (!quota) loadQuota();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
   useEffect(() => {
@@ -165,7 +193,7 @@ export function HealthChatbot() {
     if (!file) return;
 
     if (file.size > MAX_IMAGE_SIZE_MB * 1024 * 1024) {
-      alert(`Image must be smaller than ${MAX_IMAGE_SIZE_MB}MB.`);
+      showToast(`Image must be smaller than ${MAX_IMAGE_SIZE_MB}MB.`, "error");
       return;
     }
 
@@ -218,14 +246,17 @@ export function HealthChatbot() {
           content: data.reply,
         },
       ]);
-    } catch {
+      loadQuota();
+    } catch (err) {
       setMessages((prev) => [
         ...prev,
         {
           id: Date.now().toString() + "_err",
           role: "bot",
           content:
-            "⚠️ Sorry, something went wrong. Please try again in a moment.",
+            err instanceof Error && err.message
+              ? `⚠️ ${err.message}`
+              : "⚠️ Sorry, something went wrong. Please try again in a moment.",
           isError: true,
         },
       ]);
@@ -266,7 +297,7 @@ export function HealthChatbot() {
                 NutriSafe Health AI
               </p>
               <p className="text-xs text-emerald-100 mt-0.5">
-                Powered by NutriSafe AI
+                {quota ? `${Math.max(quota.limit - quota.used, 0)} messages left today` : "Powered by NutriSafe AI"}
               </p>
             </div>
             <div className="flex items-center gap-1">
@@ -275,13 +306,7 @@ export function HealthChatbot() {
               </span>
               <button
                 onClick={() => setOpen(false)}
-                className="rounded-lg p-1.5 text-white/80 hover:bg-white/20 hover:text-white transition-colors"
-                title="Close"
-              >
-                <Minimize2 className="h-4 w-4" />
-              </button>
-              <button
-                onClick={() => setOpen(false)}
+                aria-label="Close Health AI chat"
                 className="rounded-lg p-1.5 text-white/80 hover:bg-white/20 hover:text-white transition-colors"
                 title="Close"
               >
@@ -291,7 +316,12 @@ export function HealthChatbot() {
           </div>
 
           {/* Messages */}
-          <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3 bg-slate-50">
+          <div
+            role="log"
+            aria-live="polite"
+            aria-label="Chat messages"
+            className="flex-1 overflow-y-auto px-4 py-3 space-y-3 bg-slate-50"
+          >
             {messages.map((m) => (
               <div
                 key={m.id}
@@ -467,7 +497,7 @@ export function HealthChatbot() {
           {/* Disclaimer footer */}
           <div className="bg-slate-50 border-t border-slate-100 px-3 py-1.5 flex-shrink-0">
             <p className="text-center text-[10px] text-slate-400">
-              ⚠️ For informational purposes only · Images analysed by Gemini Vision
+              ⚠️ For informational purposes only · Images analysed by NutriSafe AI
             </p>
           </div>
         </div>

@@ -22,6 +22,8 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { PremiumGate } from "@/components/PremiumGate";
+import { PromptDialog } from "@/components/ui/PromptDialog";
+import { useToast } from "@/components/ui/ToastProvider";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -275,6 +277,8 @@ export default function DietPlanPage() {
   const [generated, setGenerated] = useState(false);
   const [savingPlan, setSavingPlan] = useState(false);
   const [savedPlanId, setSavedPlanId] = useState<string | null>(null);
+  const [showSaveDialog, setShowSaveDialog] = useState(false);
+  const { showToast } = useToast();
 
   useEffect(() => {
     if (plan) setSections(parseSections(plan));
@@ -321,11 +325,8 @@ export default function DietPlanPage() {
     }
   }
 
-  async function handleSavePlan() {
+  async function handleSavePlan(name: string) {
     if (!plan) return;
-    const name = window.prompt("Enter a name for this plan:", "My Diet Plan");
-    if (!name) return;
-
     setSavingPlan(true);
     try {
       const res = await fetch("/api/diet-plans", {
@@ -336,8 +337,9 @@ export default function DietPlanPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to save plan");
       setSavedPlanId(data.plan._id);
+      setShowSaveDialog(false);
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Error saving plan");
+      showToast(err instanceof Error ? err.message : "Error saving plan", "error");
     } finally {
       setSavingPlan(false);
     }
@@ -371,9 +373,9 @@ export default function DietPlanPage() {
             </p>
           </div>
         </div>
-        <Link 
-          href="/my-plans" 
-          className="flex items-center gap-2 text-sm font-medium text-indigo-600 hover:text-indigo-700 bg-indigo-50 hover:bg-indigo-100 px-4 py-2 rounded-xl transition-colors shrink-0"
+        <Link
+          href="/my-plans"
+          className="flex items-center gap-2 text-sm font-medium text-violet-600 hover:text-violet-700 bg-violet-50 hover:bg-violet-100 px-4 py-2 rounded-xl transition-colors shrink-0"
         >
           <Bookmark className="h-4 w-4" />
           My Saved Plans
@@ -563,7 +565,7 @@ export default function DietPlanPage() {
           <div className="text-center">
             <p className="font-semibold text-slate-700">Creating your plan…</p>
             <p className="text-sm text-slate-400 mt-1">
-              Gemini AI is building a personalised diet &amp; workout plan for you
+              NutriSafe AI is building a personalised diet &amp; workout plan for you
             </p>
           </div>
         </div>
@@ -577,12 +579,12 @@ export default function DietPlanPage() {
             <div className="flex flex-wrap items-center gap-2">
               <button
                 type="button"
-                onClick={handleSavePlan}
+                onClick={() => setShowSaveDialog(true)}
                 disabled={savingPlan || !!savedPlanId}
                 className={`flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium shadow-sm transition-colors ${
-                  savedPlanId 
-                    ? "border-emerald-200 bg-emerald-50 text-emerald-700" 
-                    : "border-indigo-200 bg-indigo-50 text-indigo-700 hover:bg-indigo-100"
+                  savedPlanId
+                    ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                    : "border-violet-200 bg-violet-50 text-violet-700 hover:bg-violet-100"
                 }`}
               >
                 {savingPlan ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : savedPlanId ? <CheckCircle2 className="h-3.5 w-3.5" /> : <Save className="h-3.5 w-3.5" />}
@@ -620,6 +622,16 @@ export default function DietPlanPage() {
         </div>
       )}
       </PremiumGate>
+
+      <PromptDialog
+        open={showSaveDialog}
+        title="Save this plan"
+        label="Plan name"
+        defaultValue="My Diet Plan"
+        confirmLabel={savingPlan ? "Saving…" : "Save"}
+        onConfirm={handleSavePlan}
+        onCancel={() => setShowSaveDialog(false)}
+      />
     </div>
   );
 }

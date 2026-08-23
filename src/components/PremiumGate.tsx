@@ -23,21 +23,39 @@ export function PremiumGate({ children }: { children: React.ReactNode }) {
   // If NOT premium, show blurred overlay
   return (
     <div className="relative overflow-hidden rounded-3xl border border-slate-200 shadow-sm">
-      {/* Blurred "dummy" content simulating the Diet Plan feature */}
-      <div className="pointer-events-none select-none blur-sm opacity-50 p-6 md:p-10 bg-white">
-        <div className="mb-8">
-          <div className="flex items-center gap-3">
-            <div className="flex h-11 w-11 rounded-xl bg-slate-200" />
-            <div>
-              <div className="h-6 w-48 rounded bg-slate-200" />
-              <div className="mt-2 h-4 w-72 rounded bg-slate-100" />
-            </div>
+      {/* Blurred preview shaped like the real Diet & Exercise Plan form */}
+      <div className="pointer-events-none select-none blur-sm opacity-50 p-6 md:p-10 bg-white space-y-6">
+        {/* Your Details */}
+        <div className="card">
+          <div className="flex items-center gap-2 mb-5">
+            <div className="h-4 w-4 rounded-full bg-violet-200" />
+            <div className="h-4 w-28 rounded bg-slate-200" />
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="h-10 rounded-lg bg-slate-100 border border-slate-200" />
+            <div className="h-10 rounded-lg bg-slate-100 border border-slate-200" />
           </div>
         </div>
-        <div className="space-y-6">
-          <div className="h-[200px] w-full rounded-2xl bg-slate-100" />
-          <div className="h-[150px] w-full rounded-2xl bg-slate-100" />
+
+        {/* Your Goal */}
+        <div className="card">
+          <div className="h-4 w-24 rounded bg-slate-200 mb-4" />
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="h-16 rounded-xl border-2 border-slate-200 bg-slate-50" />
+            ))}
+          </div>
         </div>
+
+        {/* Activity & Workout */}
+        <div className="card space-y-4">
+          <div className="h-4 w-40 rounded bg-slate-200" />
+          <div className="h-10 rounded-lg bg-slate-100 border border-slate-200" />
+          <div className="h-10 rounded-lg bg-slate-100 border border-slate-200" />
+        </div>
+
+        {/* Generate button */}
+        <div className="h-12 w-full rounded-lg bg-violet-200" />
       </div>
 
       {/* Luxury Overlay */}

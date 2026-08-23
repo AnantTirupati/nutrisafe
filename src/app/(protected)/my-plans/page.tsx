@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Bookmark, FileText, Trash2, Loader2, Calendar } from "lucide-react";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { useToast } from "@/components/ui/ToastProvider";
 
 interface PlanSnippet {
   _id: string;
@@ -15,6 +17,8 @@ export default function MyPlansPage() {
   const [plans, setPlans] = useState<PlanSnippet[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
+  const { showToast } = useToast();
 
   useEffect(() => {
     fetchPlans();
@@ -33,9 +37,10 @@ export default function MyPlansPage() {
     }
   }
 
-  async function deletePlan(id: string) {
-    if (!confirm("Are you sure you want to delete this plan?")) return;
-    
+  async function confirmDelete() {
+    if (!pendingDeleteId) return;
+    const id = pendingDeleteId;
+    setPendingDeleteId(null);
     try {
       const res = await fetch(`/api/diet-plans/${id}`, { method: "DELETE" });
       if (!res.ok) {
@@ -44,7 +49,7 @@ export default function MyPlansPage() {
       }
       setPlans((prev) => prev.filter((p) => p._id !== id));
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Error deleting plan");
+      showToast(err instanceof Error ? err.message : "Error deleting plan", "error");
     }
   }
 
@@ -52,7 +57,7 @@ export default function MyPlansPage() {
     <div className="max-w-4xl mx-auto space-y-6">
       {/* Header */}
       <div className="flex items-center gap-3">
-        <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-blue-600 shadow-md shadow-indigo-200">
+        <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500 to-purple-700 shadow-md shadow-violet-200">
           <Bookmark className="h-6 w-6 text-white" />
         </div>
         <div>
@@ -86,10 +91,10 @@ export default function MyPlansPage() {
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {plans.map((plan) => (
-            <div key={plan._id} className="card flex flex-col justify-between hover:shadow-md transition-shadow">
+            <div key={plan._id} className="card group flex flex-col justify-between hover:shadow-md transition-shadow">
               <div className="mb-4">
                 <Link href={`/my-plans/${plan._id}`}>
-                  <h3 className="font-semibold text-slate-900 group-hover:text-indigo-600 text-lg sm:truncate">
+                  <h3 className="font-semibold text-slate-900 group-hover:text-violet-600 text-lg sm:truncate">
                     {plan.name}
                   </h3>
                 </Link>
@@ -103,12 +108,14 @@ export default function MyPlansPage() {
               <div className="flex items-center justify-between border-t border-slate-100 pt-3 mt-auto">
                 <Link
                   href={`/my-plans/${plan._id}`}
-                  className="text-sm font-medium text-indigo-600 hover:text-indigo-700"
+                  className="text-sm font-medium text-violet-600 hover:text-violet-700"
                 >
                   View / Edit
                 </Link>
                 <button
-                  onClick={() => deletePlan(plan._id)}
+                  type="button"
+                  onClick={() => setPendingDeleteId(plan._id)}
+                  aria-label={`Delete ${plan.name}`}
                   className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                   title="Delete plan"
                 >
@@ -119,6 +126,16 @@ export default function MyPlansPage() {
           ))}
         </div>
       )}
+
+      <ConfirmDialog
+        open={!!pendingDeleteId}
+        title="Delete this plan?"
+        description="This can't be undone."
+        confirmLabel="Delete"
+        danger
+        onConfirm={confirmDelete}
+        onCancel={() => setPendingDeleteId(null)}
+      />
     </div>
   );
 }

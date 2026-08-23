@@ -10,9 +10,9 @@ const styles: Record<RiskLevel, string> = {
 };
 
 const labels: Record<RiskLevel, string> = {
-  low: "Low risk",
-  medium: "Medium risk",
-  high: "High risk",
+  low: "Good fit",
+  medium: "Use caution",
+  high: "Not recommended",
 };
 
 export function RiskBadge({

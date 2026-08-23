@@ -3,10 +3,12 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { 
+import {
   ArrowLeft, FileText, Loader2, Save, Edit3, Trash2, CheckCircle2,
   Dumbbell, Apple, ShoppingCart, Calendar, BarChart3, Lightbulb, AlertTriangle, ChevronDown, ChevronUp
 } from "lucide-react";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { useToast } from "@/components/ui/ToastProvider";
 
 // ─── Section icons ────────────────────────────────────────────────────────────
 const SECTION_META: Record<string, { icon: React.ReactNode; color: string }> = {
@@ -104,6 +106,8 @@ export default function SavedPlanDetail() {
 
   const [saving, setSaving] = useState(false);
   const [successMsg, setSuccessMsg] = useState("");
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const { showToast } = useToast();
 
   useEffect(() => {
     fetchPlan();
@@ -139,7 +143,7 @@ export default function SavedPlanDetail() {
       setIsEditingName(false);
       showSuccess("Name updated");
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Error saving");
+      showToast(err instanceof Error ? err.message : "Error saving", "error");
     } finally {
       setSaving(false);
     }
@@ -159,20 +163,20 @@ export default function SavedPlanDetail() {
       setIsEditingContent(false);
       showSuccess("Plan updated");
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Error saving");
+      showToast(err instanceof Error ? err.message : "Error saving", "error");
     } finally {
       setSaving(false);
     }
   }
 
-  async function handleDelete() {
-    if (!confirm("Delete this plan forever?")) return;
+  async function confirmDelete() {
+    setShowDeleteConfirm(false);
     try {
       const res = await fetch(`/api/diet-plans/${id}`, { method: "DELETE" });
       if (!res.ok) throw new Error("Failed to delete");
       router.push("/my-plans");
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Error deleting");
+      showToast(err instanceof Error ? err.message : "Error deleting", "error");
     }
   }
 
@@ -201,16 +205,16 @@ export default function SavedPlanDetail() {
                 type="text" 
                 value={editName} 
                 onChange={(e) => setEditName(e.target.value)}
-                className="input py-1 text-lg font-bold w-full sm:w-64 border-indigo-200 focus:border-indigo-500 focus:ring-indigo-200"
+                className="input py-1 text-lg font-bold w-full sm:w-64 border-violet-200 focus:border-violet-500 focus:ring-violet-200"
                 autoFocus
               />
-              <button disabled={saving} onClick={handleSaveName} className="p-1.5 rounded bg-indigo-100 text-indigo-700 hover:bg-indigo-200 transition-colors"><CheckCircle2 className="w-5 h-5" /></button>
+              <button disabled={saving} onClick={handleSaveName} className="p-1.5 rounded bg-violet-100 text-violet-700 hover:bg-violet-200 transition-colors"><CheckCircle2 className="w-5 h-5" /></button>
               <button disabled={saving} onClick={() => setIsEditingName(false)} className="text-sm font-medium text-slate-500 hover:text-slate-700">Cancel</button>
             </div>
           ) : (
             <div className="flex items-center gap-3">
               <h1 className="text-2xl font-bold text-slate-900">{planName}</h1>
-              <button onClick={() => { setEditName(planName); setIsEditingName(true); }} className="text-slate-400 hover:text-indigo-600 transition-colors" title="Edit Name"><Edit3 className="w-4 h-4" /></button>
+              <button onClick={() => { setEditName(planName); setIsEditingName(true); }} className="text-slate-400 hover:text-violet-600 transition-colors" title="Edit Name"><Edit3 className="w-4 h-4" /></button>
             </div>
           )}
           <p className="text-sm text-slate-500 mt-1 flex items-center gap-1">Created on {createdAt}</p>
@@ -220,13 +224,13 @@ export default function SavedPlanDetail() {
           {!isEditingContent && (
             <button
               onClick={() => { setEditContent(planContent); setIsEditingContent(true); }}
-              className="flex items-center gap-1.5 rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-xs font-semibold text-indigo-700 hover:bg-indigo-100 transition-colors shadow-sm"
+              className="flex items-center gap-1.5 rounded-lg border border-violet-200 bg-violet-50 px-3 py-1.5 text-xs font-semibold text-violet-700 hover:bg-violet-100 transition-colors shadow-sm"
             >
               <Edit3 className="h-3.5 w-3.5" /> Edit Plan
             </button>
           )}
           <button
-            onClick={handleDelete}
+            onClick={() => setShowDeleteConfirm(true)}
             className="flex items-center gap-1.5 rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-semibold text-red-700 hover:bg-red-100 transition-colors shadow-sm"
           >
             <Trash2 className="h-3.5 w-3.5" /> Delete
@@ -264,6 +268,16 @@ export default function SavedPlanDetail() {
           ))}
         </div>
       )}
+
+      <ConfirmDialog
+        open={showDeleteConfirm}
+        title="Delete this plan?"
+        description="This will permanently delete this plan. This can't be undone."
+        confirmLabel="Delete"
+        danger
+        onConfirm={confirmDelete}
+        onCancel={() => setShowDeleteConfirm(false)}
+      />
     </div>
   );
 }
