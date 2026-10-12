@@ -24,6 +24,7 @@ export function LandingNav() {
     { label: "How it Works", href: "#how-it-works" },
     { label: "Features", href: "#features" },
     { label: "Pricing", href: "#pricing" },
+    { label: "FAQ", href: "#faq" },
   ];
   const [hidden, setHidden] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);

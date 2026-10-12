@@ -219,26 +219,31 @@ function HeroSection() {
 
         {/* Top left hero copy */}
         <div className="absolute left-6 top-28 lg:left-32 w-[calc(100%-48px)] lg:w-auto z-10">
-          <p
-            className="text-[#4aa366] leading-none"
-            style={{
-              fontFamily: "'Outfit', sans-serif",
-              fontWeight: 800,
-              fontSize: "clamp(64px, 7vw, 112px)",
-            }}
-          >
-            Nutri
-          </p>
-          <p
-            className="text-white leading-none -mt-4 ml-16 lg:ml-28"
-            style={{
-              fontFamily: "'Outfit', sans-serif",
-              fontWeight: 400,
-              fontSize: "clamp(64px, 7vw, 112px)",
-            }}
-          >
-            Safe
-          </p>
+          <h1 className="leading-none m-0 p-0 font-normal">
+            <span
+              className="block text-[#4aa366] leading-none"
+              style={{
+                fontFamily: "'Outfit', sans-serif",
+                fontWeight: 800,
+                fontSize: "clamp(64px, 7vw, 112px)",
+              }}
+            >
+              Nutri
+            </span>
+            <span
+              className="block text-white leading-none -mt-4 ml-16 lg:ml-28"
+              style={{
+                fontFamily: "'Outfit', sans-serif",
+                fontWeight: 400,
+                fontSize: "clamp(64px, 7vw, 112px)",
+              }}
+            >
+              Safe
+            </span>
+            <span className="sr-only">
+              NutriSafe – AI Food Safety &amp; Personalized Diet Assistant for Health Conditions &amp; Allergies
+            </span>
+          </h1>
         </div>
 
         {/* Middle left hero copy */}
@@ -371,12 +376,12 @@ function HowItWorksSection() {
               </span>
             </div>
             <div className="flex flex-col gap-3">
-              <p
+              <h3
                 className="text-[#153322] text-xl"
                 style={{ fontFamily: "'Outfit', sans-serif", fontWeight: 700 }}
               >
                 {item.title}
-              </p>
+              </h3>
               <p
                 className="text-[#5f6b63] text-[15px] leading-6"
                 style={{ fontFamily: "'Figtree', sans-serif", fontWeight: 400 }}
@@ -641,7 +646,7 @@ function PricingCard({ plan }: { plan: PricingPlan }) {
       {/* Header */}
       <div className="flex flex-col gap-3">
         <div className="flex items-center justify-between">
-          <p
+          <h3
             className="text-lg"
             style={{
               fontFamily: "'Outfit', sans-serif",
@@ -650,7 +655,7 @@ function PricingCard({ plan }: { plan: PricingPlan }) {
             }}
           >
             {plan.name}
-          </p>
+          </h3>
           {plan.badge && (
             <span
               className="px-2.5 py-1 rounded-md text-[11px] font-bold bg-[#4aa366] text-[#153322]"
@@ -778,6 +783,103 @@ function PricingSection() {
   );
 }
 
+// ─── FAQ Section ──────────────────────────────────────────────────────────────
+
+const FAQS = [
+  {
+    q: "What is NutriSafe and how does it work?",
+    a: "NutriSafe is an AI-powered food safety and personalized diet assistant. It analyzes ingredients in packaged foods against your specific health conditions (like Diabetes, Hypertension, PCOS, Heart Disease) and allergies to deliver an instant verdict: Good Fit, Use Caution, or Not Recommended.",
+  },
+  {
+    q: "How does NutriSafe check food safety for Diabetes, Hypertension, and PCOS?",
+    a: "Unlike generic health apps that assign a one-size-fits-all 1-to-10 score, NutriSafe AI evaluates every ingredient against your active health profile. For Diabetes, it flags hidden maltodextrin and rapid glycemic spikes. For Hypertension, it detects hidden sodium preservatives like sodium benzoate and MSG.",
+  },
+  {
+    q: "Can NutriSafe detect food allergens like peanuts, gluten, and dairy?",
+    a: "Yes. NutriSafe has a deterministic allergen safety backstop that cross-checks all declared allergies (Nuts, Peanuts, Gluten, Dairy, Lactose, Soy, Eggs, Shellfish, Fish, Sesame, Sulfites) against comprehensive alias terms. If any declared allergen is detected, the product is immediately flagged as Not Recommended.",
+  },
+  {
+    q: "How do I scan a packaged food item?",
+    a: "You can scan foods in three easy ways: scan the barcode (fetches product details from Open Food Facts with web search fallback), upload a photo of the ingredient label (our vision AI extracts text via OCR), or type the ingredient list manually.",
+  },
+  {
+    q: "Does NutriSafe support Indian packaged foods and regional languages?",
+    a: "Yes! NutriSafe is built India-first. It recognizes Indian packaged food products and delivers ingredient explanations and dietary advice in English plus 10 Indian languages: Hindi, Marathi, Gujarati, Tamil, Telugu, Kannada, Malayalam, Bengali, and Punjabi.",
+  },
+  {
+    q: "Is NutriSafe free to use?",
+    a: "Yes. NutriSafe has a generous free tier with 10 scans per day, 15 AI health chatbot messages per day, scan history, and safe food lists. A Premium tier is available for ₹500/month for users who want higher quotas and custom AI diet & workout plans.",
+  },
+];
+
+function FaqSection() {
+  const [openIndex, setOpenIndex] = useState<number | null>(0);
+
+  return (
+    <section id="faq" className="relative bg-white py-24 px-6 lg:px-20 border-t border-[#e4ece6] scroll-mt-24" style={{ zIndex: 20 }}>
+      <div className="max-w-[1000px] mx-auto flex flex-col gap-12">
+        <div className="flex flex-col items-center text-center gap-3">
+          <h2
+            className="text-[#153322] text-[36px] lg:text-[44px] leading-tight"
+            style={{ fontFamily: "'Outfit', sans-serif", fontWeight: 800 }}
+          >
+            Frequently Asked Questions
+          </h2>
+          <p
+            className="text-[#5f6b63] text-base lg:text-lg max-w-[620px]"
+            style={{ fontFamily: "'Figtree', sans-serif" }}
+          >
+            Everything you need to know about NutriSafe, personalized ingredient safety, and how our AI protects your health.
+          </p>
+        </div>
+
+        <div className="flex flex-col gap-4">
+          {FAQS.map((faq, idx) => {
+            const isOpen = openIndex === idx;
+            return (
+              <div
+                key={faq.q}
+                className="rounded-[20px] border border-[#e4ece6] bg-[#f9f8f3] overflow-hidden transition-all duration-200"
+              >
+                <button
+                  type="button"
+                  onClick={() => setOpenIndex(isOpen ? null : idx)}
+                  className="w-full p-6 text-left flex items-center justify-between gap-4 cursor-pointer focus:outline-none"
+                  aria-expanded={isOpen}
+                >
+                  <h3
+                    className="text-[#153322] text-lg lg:text-xl font-bold"
+                    style={{ fontFamily: "'Outfit', sans-serif" }}
+                  >
+                    {faq.q}
+                  </h3>
+                  <span
+                    className={`size-8 rounded-full flex items-center justify-center text-base font-bold shrink-0 transition-transform duration-200 ${
+                      isOpen ? "bg-[#4aa366] text-white rotate-45" : "bg-[#e1f2e7] text-[#153322]"
+                    }`}
+                  >
+                    +
+                  </span>
+                </button>
+                {isOpen && (
+                  <div className="px-6 pb-6 pt-0">
+                    <p
+                      className="text-[#5f6b63] text-[15px] leading-relaxed"
+                      style={{ fontFamily: "'Figtree', sans-serif" }}
+                    >
+                      {faq.a}
+                    </p>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </section>
+  );
+}
+
 // ─── Final CTA ────────────────────────────────────────────────────────────────
 
 function FinalCtaSection() {
@@ -846,6 +948,7 @@ const FOOTER_LEGAL = [
   { label: "Privacy Policy", href: "/legal/privacy" },
   { label: "Refund Policy", href: "/legal/refund-policy" },
   { label: "Fair Usage Policy", href: "/legal/fair-usage" },
+  { label: "FAQ", href: "#faq" },
 ];
 
 function Footer() {
@@ -990,6 +1093,7 @@ export default function HomePage() {
       <div className="relative" style={{ zIndex: 30, background: "white" }}>
         <HowItWorksSection />
         <PricingSection />
+        <FaqSection />
         <FinalCtaSection />
         <Footer />
       </div>
