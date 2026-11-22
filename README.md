@@ -69,4 +69,4 @@ A production-ready food safety & diet assistant that analyzes packaged food ingr
 
 ## License
 
-MIT.
+MIT. Copyright (c) 2026 KaiketsuTech. NutriSafe is a product of KaiketsuTech (https://www.kaiketsutech.online).

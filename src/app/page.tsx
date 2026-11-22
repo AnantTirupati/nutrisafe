@@ -1054,7 +1054,7 @@ function Footer() {
             className="text-[#ccd8d1] text-[12px]"
             style={{ fontFamily: "'Figtree', sans-serif" }}
           >
-            © 2026 NutriSafe. All rights reserved.
+            © 2026 KaiketsuTech. NutriSafe is a KaiketsuTech product. All rights reserved.
           </p>
           <p
             className="text-[#ccd8d1] text-[11px] leading-relaxed lg:text-right max-w-[600px]"
